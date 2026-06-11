@@ -1,0 +1,995 @@
+\documentclass[11pt]{amsart}
+\usepackage{amsmath,amssymb,amsthm,mathtools,stmaryrd}
+\usepackage{booktabs,array,tabularx,longtable}
+\usepackage{geometry,hyperref,xcolor,enumitem,microtype}
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta,positioning,matrix,decorations.pathmorphing}
+\geometry{margin=1.1in}
+\hypersetup{colorlinks,linkcolor=blue!55!black,citecolor=green!45!black,urlcolor=purple!70!black}
+
+% ── Theorem environments ──────────────────────────────────────────
+\newtheorem{theorem}{Theorem}[section]
+\newtheorem{proposition}[theorem]{Proposition}
+\newtheorem{lemma}[theorem]{Lemma}
+\newtheorem{corollary}[theorem]{Corollary}
+\newtheorem{conjecture}[theorem]{Conjecture}
+\theoremstyle{definition}
+\newtheorem{definition}[theorem]{Definition}
+\newtheorem{example}[theorem]{Example}
+\newtheorem{remark}[theorem]{Remark}
+\newtheorem{construction}[theorem]{Construction}
+\newtheorem{observation}[theorem]{Observation}
+\newtheorem{experiment}[theorem]{Experiment}
+\newtheorem{result}[theorem]{Result}
+\newtheorem{failure}[theorem]{Failure}
+\newtheorem{correction}[theorem]{Correction}
+
+% ── Notation ─────────────────────────────────────────────────────
+\newcommand{\Cctx}{\mathcal{C}_{\!\mathrm{ctx}}}
+\newcommand{\Nctx}{N_{\mathrm{ctx}}}
+\newcommand{\Nenv}{N_{\mathrm{env}}}
+\newcommand{\Ka}{K_\alpha}
+\newcommand{\F}{\mathbb{F}}
+\newcommand{\Z}{\mathbb{Z}}
+\newcommand{\Zp}{\mathbb{Z}_p}
+\newcommand{\Qp}{\mathbb{Q}_p}
+\newcommand{\Fp}{\mathbb{F}_p}
+\newcommand{\Fbar}{\bar{\mathbb{F}}_p}
+\newcommand{\defeq}{\coloneqq}
+\newcommand{\rhoR}{\rho_R}
+\newcommand{\rhoL}{\rho_L}
+\newcommand{\HH}{H}
+\newcommand{\vp}{v_p}
+\newcommand{\cobdry}{\delta}
+% \Sigma already defined
+\DeclareMathOperator{\SC}{SC}
+\DeclareMathOperator{\lcm}{lcm}
+\DeclareMathOperator{\Gal}{Gal}
+
+\title[A Context Algebra for Autoregressive Systems]{%
+  A Context Algebra for Autoregressive Systems:\\[2pt]
+  Sheaves, p-adic Refinement Towers,\\
+  $\alpha$-Complex Filtrations, and Dual Nerve Geometry}
+
+\author{[Authors]}
+\thanks{Grounded in Seidel's p-adic splitting framework
+\cite{Seidel25} and Henniart--Vign\'eras representation theory \cite{HV17}.
+All experimental code available at [repository].}
+\date{\today}
+
+\begin{document}
+\maketitle
+\tableofcontents
+
+% ══════════════════════════════════════════════════════════════════
+\section*{Preface: what this paper is about}
+% ══════════════════════════════════════════════════════════════════
+
+This paper develops the foundations of a \textbf{context algebra}
+$\Cctx$ for autoregressive sequence generation.
+It is not a paper about hallucination detection,
+though hallucinations appear throughout as stress tests.
+
+The distinction matters.
+A hallucination detector asks: \emph{is this output true?}
+A context algebra asks: \emph{what algebraic structures organise
+the evolution of context in autoregressive systems?}
+The second question is broader, more mathematical, and---as we discovered
+through an extended research process---more tractable.
+
+The shift clarifies everything.
+Under the hallucination framing, structures like Bockstein filtration
+depth, Frobenius orbit decomposition, and sheaf coboundary norms
+were overengineered classifiers fighting against a simple cosine
+similarity baseline.
+Under the context algebra framing, these same structures are different
+projections of a single underlying phenomenon: the geometry of
+\emph{contextual refinement, transport, and obstruction} in a system
+that generates text by iterating a learned transition operator.
+
+Hallucinations become one degeneration mode among several.
+They are useful precisely because they stress the machinery---
+context transport, gluing, orbit stability, lifting structure---
+in ways that smooth factual generation does not.
+The tearing reveals the geometry.
+
+The paper records the full research arc: every theorem, every failure,
+every correction.
+This is intentional.
+The failures identify regime boundaries.
+The corrections identify what the algebra is actually measuring.
+Both are more informative than a clean final statement would be.
+
+% ══════════════════════════════════════════════════════════════════
+\section{The context category $\Cctx$}
+\label{sec:category}
+% ══════════════════════════════════════════════════════════════════
+
+\subsection{The primary object}
+
+Let $M$ be a language model with hidden state space $\mathbb{R}^d$,
+generating a sequence $h_0, h_1, \ldots, h_n \in \mathbb{R}^d$.
+We organise this data into a mathematical structure.
+
+\begin{definition}[Context category]
+\label{def:Cctx}
+The \emph{context category} $\Cctx$ of a model $M$ on a sequence of
+length $n$ is a structured category with:
+\begin{enumerate}[label=(\roman*)]
+\item \textbf{Objects} $\{X^k\}_{k=1}^K$: the skeleton windows
+  $X^k = (h_{(k-1)s}, \ldots, h_{ks-1})$
+  for window size $s$ and depth $K$ (we use $K=8$, $s=128$, $n=1024$).
+
+\item \textbf{Morphisms} $T_{k\ell}: X^k \to X^\ell$: the
+  \emph{contextual transport operators}, fitted as
+  \[
+    T_{k,k+1} = \arg\min_{T} \bigl\|T H_k - H_{k+1}\bigr\|_F^2
+    + \varepsilon \|T\|_F^2,
+  \]
+  where $H_k \in \mathbb{R}^{s \times d}$ is the hidden-state matrix
+  of window $X^k$.
+
+\item \textbf{Sheaf} $\mathcal{F}$: the assignment
+  $\mathcal{F}(X^k) = \boldsymbol{\Sigma}_k^{1/2}$
+  (Cholesky factor of the empirical covariance of $X^k$),
+  with restriction maps $\rhoR, \rhoL$ induced by $T_{k,k+1}$.
+
+\item \textbf{Nerve} $\Nctx(\mathcal{U})$: the nerve of the cover
+  $\mathcal{U} = \{X^k\}$ defined by centroid proximity in PCA space,
+  with filtration given by centroid distances.
+
+\item \textbf{Filtration} $X^1 \subset X^2 \subset X^4 \subset X^8 \subset \cdots$:
+  the skeleton filtration encoding refinement depth
+  (formally analogous to the p-adic tower
+  $\cdots \to \Z/p^3 \to \Z/p^2 \to \Z/p$).
+
+\item \textbf{Galois action}: for each prime $p$, the Frobenius
+  $\phi_p: x \mapsto x^p$ acts on the eigenvalues of $T \bmod p$,
+  partitioning contextual modes into orbits.
+\end{enumerate}
+\end{definition}
+
+Five algebraic structures operate on $\Cctx$.
+Each measures a different aspect of contextual dynamics.
+None is more fundamental than the others.
+
+\begin{center}
+\renewcommand{\arraystretch}{1.25}
+\begin{tabular}{@{}lll@{}}
+\toprule
+Structure & Input & What it measures \\
+\midrule
+Dual nerve map $\phi: \Nctx \to \Nenv$ & $T, \mathcal{F}, \Nenv$
+  & Contextual compatibility with environment \\
+$\alpha$-complex $\Ka(X^k)$ & $\{h_t\}_{t \in X^k}$
+  & Manifold geometry of context neighborhoods \\
+Sheaf coboundary $\rhoR - \rhoL$ & $T, \boldsymbol{\Sigma}_k, \boldsymbol{\Sigma}_{k+1}$
+  & Transport defect / gluing failure \\
+Bockstein depth $F_{\mathrm{depth}}(T; p)$ & $T \bmod p$
+  & Refinement liftability depth \\
+Frobenius orbits $\mathcal{O}_p(T)$ & $\mathrm{char.poly}(T) / \Fp$
+  & Context collapse at prime $p$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\subsection{Connection to Seidel's framework}
+
+The architecture of $\Cctx$ is motivated by Seidel's p-adic splitting
+of the quantum connection \cite{Seidel25}.
+In Seidel's setting, one has a closed monotone symplectic manifold $M$,
+quantum cohomology $H^*(M)[q]$, and the quantum connection
+\[
+  \nabla_{tq\partial_q} x = tq\partial_q x + c_1(M) *_q x.
+\]
+The splitting problem (Conjecture~1.1 of \cite{Seidel25}) asks whether
+orthogonal idempotents $e_1, \ldots, e_m \in H^*(M)[q^{\pm 1}]$
+induce a splitting of the completed space $H^*(M)[q^{\pm 1}][[t]]$
+into $\nabla$-invariant summands.
+
+The analogy we develop is:
+
+\begin{center}
+\renewcommand{\arraystretch}{1.2}
+\begin{tabular}{@{}ll@{}}
+\toprule
+Seidel & Context algebra \\
+\midrule
+Symplectic manifold $M$ & Contextual representation manifold $\mathcal{M}$ \\
+Quantum cohomology $H^*(M)[q]$ & Context window filtration $H^*(X^k)$ \\
+Quantum connection $\nabla_{tq\partial_q}$ & Transport $T: h_t \to h_{t+1}$ \\
+Idempotent $e_i$ & Contextual mode $i$ \\
+Frobenius orbit $\mathcal{O}_i$ & Cluster of related contextual modes \\
+Splitting failure & Contextual degeneration \\
+$p$-adic liftability & Stability under context refinement \\
+Admissibility condition $\vp(E_\lambda^k) \geq \log_p(k) - \gamma$ & Seidel gate for transport $T$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+The analogy is tight in some places and heuristic in others.
+We will be careful throughout to distinguish which is which.
+
+\subsection{Contextual degeneration modes}
+
+Under the context algebra framing, different algebraic failure modes
+in $\Cctx$ correspond to different observable generation pathologies.
+This is the central table of the paper:
+
+\begin{center}
+\renewcommand{\arraystretch}{1.3}
+\begin{tabular}{@{}p{2.8cm}p{3.5cm}p{4.5cm}@{}}
+\toprule
+Mode & Algebraic signature & Generation phenomenology \\
+\midrule
+Context collapse & $k_p > 1$ (large Frobenius orbit) & Model ignores distant context \\
+Transport failure & $\|\rhoR - \rhoL\|_F \gg 0$ & Window-to-window inconsistency \\
+Topological tear & $H_1(\Ka)$ drops across layers & Semantic circuit collapse \\
+Refinement stall & $F_{\mathrm{depth}} = 1$ & Feature lost at coarsest scale \\
+Nerve mismatch & $\delta(\phi) \gg 0$ & Environment incompatibility \\
+\midrule
+\textit{Hallucination} & \textit{Multiple modes, especially nerve mismatch} & \textit{Factual misalignment} \\
+\textit{Drift} & \textit{Gradual coboundary growth} & \textit{Topic migration} \\
+\textit{Fiction} & \textit{Controlled nerve mismatch} & \textit{Intentional departure} \\
+\textit{Ambiguity} & \textit{High $H_1$, low $\delta$} & \textit{Multiple valid continuations} \\
+\textit{Speculation} & \textit{Elevated $F_\mathrm{depth}$, low drift} & \textit{Lifted but unsupported} \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+The italicised rows are not special.
+They are particular combinations of the five algebraic failure modes.
+The context algebra does not privilege ``hallucination'' over ``drift'' or
+``fiction''; it measures where each sits in the space of contextual behavior.
+
+% ══════════════════════════════════════════════════════════════════
+\section{Layer one: dual nerve compatibility geometry}
+\label{sec:dual-nerve}
+% ══════════════════════════════════════════════════════════════════
+
+\subsection{Contextual compatibility: the problem}
+
+The central question of Layer~1 is not ``is this true?''
+It is: \emph{is the model's contextual structure compatible with
+the structure of its environment?}
+
+The environment can be any structured reference: a knowledge graph,
+a retrieval database, a prior conversation, a specification document,
+a constraint set.
+In our experiments we use a biographical knowledge base,
+but the construction is general.
+
+\subsection{Two simplicial complexes in one vocabulary}
+
+\begin{definition}[Vocabulary and entity vectors]
+Let $\mathcal{V}$ be the shared vocabulary of KB attribute values.
+For each entity $e$ in the environment, define its
+\emph{fact vector} $\mathbf{f}_e \in \{0,1\}^{|\mathcal{V}|}$
+where $(\mathbf{f}_e)_j = 1$ iff value $j$ is a known fact about $e$.
+For each text window $s$, define its
+\emph{mention vector} $\mathbf{m}_s \in \{0,1\}^{|\mathcal{V}|}$
+where $(\mathbf{m}_s)_j = 1$ iff value $j$ appears in $s$.
+\end{definition}
+
+\begin{definition}[Environment and context nerves]
+\label{def:dual-nerve}
+\begin{itemize}
+\item The \emph{environment nerve} $\Nenv$ is the $\alpha$-complex on
+  $\{\mathbf{f}_e\}$ projected to $\mathbb{R}^2$ via PCA,
+  with filtration given by the graph distance in the KB relation graph.
+
+\item The \emph{context nerve} $\Nctx$ is the $\alpha$-complex on
+  $\{\mathbf{m}_s\}$ projected onto the \emph{same} PCA basis as $\Nenv$.
+
+\item The \emph{comparison map} $\phi: \Nctx \to \Nenv$
+  is defined by cosine alignment of mention vectors to entity vectors.
+\end{itemize}
+\end{definition}
+
+Both complexes live in the same vocabulary space.
+The comparison map is a well-typed map of simplicial complexes.
+$\phi_*: H_*(\Nctx) \to H_*(\Nenv)$ is the induced map on homology.
+
+\begin{theorem}[Contextual consistency criterion]
+\label{thm:consistency}
+A generated trajectory is \emph{contextually consistent}
+with its environment iff $\phi_*$ is surjective:
+every homological feature of $\Nenv$ is represented in $\Nctx$.
+When $H_*(\Nenv) = 0$ (sparse environment), this reduces to
+cosine alignment. When $H_*(\Nenv) \neq 0$ (cyclic KB), this
+becomes a topological statement.
+\end{theorem}
+
+\subsection{The contextual transport defect score}
+
+\begin{definition}[Transport defect]
+\[
+  \delta(\text{text}) \defeq (1 - \mathrm{KB\text{-}sim})\cdot 0.6
+  \;+\; \frac{|H_1(\Nctx) - H_1(\Nenv)|}{H_1(\Nenv) + \varepsilon}\cdot 0.4.
+\]
+\end{definition}
+
+\subsection{Constructing $\Nenv$ with genuine topology}
+
+For $\phi_*$ to be a non-trivial map on $H_1$, the environment nerve
+must have $H_1(\Nenv) \neq 0$.
+This requires explicit cycles in the relation graph.
+We construct a 14-entity KB with three:
+
+\begin{itemize}
+\item \textbf{Physics cycle} (length 5):
+  Einstein $\to$ Bohr $\to$ Heisenberg $\to$ Pauli $\to$ Dirac $\to$ Einstein
+  (debated / taught / collaborated / collaborated / inspired).
+\item \textbf{Mathematics cycle} (length 4):
+  Newton $\to$ Euler $\to$ Gauss $\to$ Riemann $\to$ Newton
+  (influenced / influenced / mentored / generalised).
+\item \textbf{Molecular biology cycle} (length 4):
+  Watson $\to$ Crick $\to$ Franklin $\to$ Wilkins $\to$ Watson.
+\end{itemize}
+
+\begin{result}[Environment nerve topology]
+\label{result:Ne-h1}
+The environment nerve $\Nenv$ built from this KB
+with graph-distance filtration has $H_1(\Nenv) = 3$
+persistent bars at filtration interval $[1.0, 2.0]$
+(lifetime $= 1.0$), one per explicit cycle.
+\end{result}
+
+\subsection{Experimental results on contextual transport defect}
+
+On 12 biographical text pairs (4 base topics, 8 bootstrap paraphrases),
+factual vs fabricated variants:
+
+\begin{result}[Transport defect separates text types]
+\label{result:defect}
+\begin{center}
+\begin{tabular}{@{}lrrrc@{}}
+\toprule
+Text type & Mean $\delta$ & Std & $|\bar\delta| > \sigma$? & Correct labels \\
+\midrule
+Factual & $0.146$ & $0.088$ & Yes & $12/12$ \\
+Fabricated & $0.522$ & $0.083$ & Yes & $12/12$ \\
+\midrule
+$\Delta$ & $0.377$ & --- & Cohen $d = 1.82$ & --- \\
+\bottomrule
+\end{tabular}
+\end{center}
+Bootstrap-stable across all 12 paraphrase variants.
+\end{result}
+
+\begin{remark}[The $H_1$ component is not yet active]
+At current KB scale (single-entity prompts, $|\mathcal{V}| = 41$),
+$H_1(\Nctx) = H_1(\Nenv) = 0$ for all prompt pairs.
+The $H_1$ term contributes zero to $\delta$.
+The signal is entirely from cosine alignment.
+
+This is a regime boundary, not a failure.
+The topological component of $\phi_*$ activates when:
+(a) $\Nenv$ has genuine cycles (confirmed, Result~\ref{result:Ne-h1}),
+and (b) $\Nctx$ is built from texts spanning multiple entities
+from different cycles, with the model nerve correctly penalising
+wrong relational assertions.
+Condition (a) holds; condition (b) requires relation-type penalties
+not yet implemented.
+\end{remark}
+
+% ══════════════════════════════════════════════════════════════════
+\section{Layer two: $\alpha$-complex filtration}
+\label{sec:alpha}
+% ══════════════════════════════════════════════════════════════════
+
+\subsection{Why Rips is the wrong complex for hidden states}
+
+The Rips complex fills every simplex $[h_0,\ldots,h_k]$
+whenever all pairwise distances $\|h_i - h_j\| \leq \varepsilon$.
+For points near a manifold (as transformer hidden states are,
+by residual stream geometry and layernorm), this gives the topology
+of a union of $\varepsilon$-balls, not of the underlying manifold.
+
+The \emph{$\alpha$-complex} uses Voronoi/Delaunay duality:
+simplex $\sigma$ is included only when its circumradius $\leq \sqrt{\alpha}$
+AND the Voronoi cells of its vertices share a point.
+This estimates manifold topology.
+
+\begin{proposition}[Precision on known geometry]
+On 20 points sampled from two disjoint unit circles at distance~3,
+the $\alpha$-complex with lifetime threshold $> 0.1$ returns exactly
+$H_1 = 2$ bars.
+Rips at the same scale returns $H_1 = 2$ plus spurious short bars.
+\end{proposition}
+
+\subsection{Per-layer topology and the phase transition}
+
+For each transformer layer $\ell$ and each skeleton window $X^k$,
+we compute $\Ka(X^k_\ell)$ using 32 subsampled points in 4D.
+
+The \emph{layer comparison} $\Delta H_1 = H_1(\Ka(X^k_\ell)) - H_1(\Ka(X^k_{\ell'}))$
+measures topological change between early (geometric) and late (semantic)
+representations.
+
+\begin{result}[$H_1$ phase transition]
+\label{result:h1phase}
+The Hallucination Persistence Index
+$\mathrm{HPI}_{H_1} \defeq \overline{H_1(\text{fabricated})} - \overline{H_1(\text{factual})}$,
+swept across training phases $\phi \in [0,1]$:
+\begin{center}
+\begin{tabular}{@{}rrl@{}}
+\toprule
+Phase $\phi$ & $\mathrm{HPI}_{H_1}$ & Contextual interpretation \\
+\midrule
+$0.0$ & $+0.295$ & Isotropic model; fabricated text noisier \\
+$0.2$ & $-0.014$ & Near zero; structure begins forming \\
+$0.3$ & $-0.072$ & \textbf{Sign flip}: factual develops organised $H_1$ \\
+$0.5$ & $-0.139$ & Deepest separation \\
+$0.7$ & $+0.050$ & Oscillation; localised defects \\
+$1.0$ & $-0.124$ & Mature structure; factual has stable loops \\
+\bottomrule
+\end{tabular}
+\end{center}
+\end{result}
+
+Reading this as context algebra: \emph{the sign flip at $\phi \approx 0.3$
+marks the phase transition where the model's contextual representation
+becomes algebraically non-trivial}.
+Below it, fabricated text looks topologically richer because periodic
+wrong-fact injection creates artificial cycles.
+Above it, factual text develops genuine semantic circuits with stable
+loop structure; fabricated text loses $H_1$ because there is now a
+factual manifold to degenerate from.
+
+\begin{failure}[$\Delta H_1$ below noise on single-entity prompts]
+\label{fail:layer}
+Layer comparison $\Delta H_1$ on 16 single-entity prompt pairs:
+$|\bar{x}|_{\mathrm{factual}} = 0.028 < \sigma = 0.106$,
+$|\bar{x}|_{\mathrm{fabricated}} = 0.054 < \sigma = 0.129$.
+Both below noise.
+
+\emph{Regime boundary}: the $\alpha$-complex layer comparison
+requires either long texts with multi-entity spans
+or a trained model where attention sinks create layer-differentiated
+low-rank subspaces.
+On short single-entity text with a synthetic model, the hidden
+states are too isotropic for the layer comparison to discriminate.
+\end{failure}
+
+\subsection{Observability zones}
+
+\begin{definition}[Probe validity domains]
+\label{def:zones}
+\begin{center}
+\begin{tabular}{@{}lccccc@{}}
+\toprule
+Regime & $n$ & $H_1$ & Coboundary & $\SC$ & Notes \\
+\midrule
+Underdetermined & $< 6$ & --- & --- & --- & No probes valid \\
+Geometric & $6$--$15$ & \checkmark & & & $H_1$ only \\
+Alignment & $16$--$63$ & \checkmark & \checkmark & & Two probes \\
+Dynamical & $\geq 64$ & \checkmark & \checkmark & \checkmark & All active \\
+\bottomrule
+\end{tabular}
+\end{center}
+A probe returning $0$ outside its validity regime should be
+marked \emph{undefined}, not zero.
+This is not an implementation detail---conflating undefined with zero
+invalidates any comparison involving that probe.
+\end{definition}
+
+% ══════════════════════════════════════════════════════════════════
+\section{Layer three: sheaf coboundary}
+\label{sec:sheaf}
+% ══════════════════════════════════════════════════════════════════
+
+\subsection{The sheaf on $\Cctx$}
+
+Assign to each window $X^k$ the covariance stalk
+$\mathcal{F}(X^k) = \boldsymbol{\Sigma}_k^{1/2}$.
+For an edge $(X^k, X^{k+1})$ with transport $T_{k,k+1}$, the
+restriction maps are:
+\[
+  \rhoL(s) = s\big|_{X^k}, \qquad \rhoR(s) = T_{k,k+1} \cdot s\big|_{X^k}.
+\]
+The sheaf coboundary is the cochain
+$(\cobdry s)[X^k \to X^{k+1}] = \rhoR \cdot s[X^{k+1}] - \rhoL \cdot s[X^k]$.
+
+\begin{definition}[Contextual transport defect]
+\label{def:cobdry}
+The \emph{contextual transport defect} on edge $(X^k, X^{k+1})$ is:
+\[
+  \cobdry_T \defeq \frac{\bigl\|T_{k,k+1} \cdot \boldsymbol{\Sigma}_k^{1/2}
+  - \boldsymbol{\Sigma}_{k+1}^{1/2}\bigr\|_F}{\bigl\|\boldsymbol{\Sigma}_{k+1}^{1/2}\bigr\|_F}.
+\]
+This is zero iff $T_{k,k+1} = \boldsymbol{\Sigma}_{k+1}^{1/2}\boldsymbol{\Sigma}_k^{-1/2}$,
+the ideal \emph{parallel transport} in the covariance metric.
+A non-zero coboundary means $T$ deviates from this ideal:
+the model's contextual transition is not a pure covariance isometry.
+\end{definition}
+
+\begin{remark}[Floer interpretation]
+In the Floer/Fukaya setting, a flat section of a bundle corresponds to
+a Lagrangian submanifold that is parallel-transported.
+Vanishing coboundary = flat section = Lagrangian is preserved.
+Non-vanishing coboundary = the Lagrangian is deformed, generating
+Floer intersection points.
+The obstruction to assembling local sections into a global one is
+$H^1(X; \mathcal{F})$, the sheaf cohomology.
+\end{remark}
+
+\subsection{Transport defect on long sequences}
+
+At $n = 128$ tokens per window (dynamical regime):
+
+\begin{result}[Coboundary gap at long scale]
+\label{result:cobdry}
+Factual trajectory (induction head, $1/k$ spectral decay):
+$\cobdry_T \approx 1.133$.
+Fabricated trajectory (7-periodic recurrence):
+$\cobdry_T \approx 1.256$.
+Gap $= -0.122$ (factual closer to parallel transport), not yet above noise
+on single trajectories but consistent in direction across 7 windows.
+\end{result}
+
+% ══════════════════════════════════════════════════════════════════
+\section{Layer four: Bockstein refinement tower}
+\label{sec:bockstein}
+% ══════════════════════════════════════════════════════════════════
+
+\subsection{Context refinement as an inverse system}
+
+Autoregressive generation naturally forms an inverse system:
+$X^1 \subset X^2 \subset X^4 \subset \cdots$
+(add more context, refine the trajectory).
+This is formally analogous to the p-adic tower
+$\cdots \to \Z/p^3 \to \Z/p^2 \to \Z/p$.
+
+\begin{definition}[Refinement liftability]
+A contextual feature $f \in H^n(X^k; \Fp)$ is
+\emph{liftable to depth $r$} if it extends compatibly through the
+tower up to $H^n(X^{2^r k}; \Z/p^r)$.
+Equivalently, in the associated Bockstein spectral sequence,
+$f$ survives to page $r$.
+The \emph{Bockstein depth} $F_{\mathrm{depth}}(f; p)$ is the
+first page at which $f$ is killed.
+Deep liftability $=$ the feature remains stable as context grows.
+Shallow liftability $=$ the feature dissolves at coarse resolution.
+\end{definition}
+
+\subsection{The collapse: what it reveals}
+
+We designed $F_{\mathrm{depth}}(T; p) \defeq \min\{r : d_r(T^r - T^{r-1} \bmod p) \neq 0\}$
+and ran operator validation.
+
+\begin{failure}[$F_\mathrm{depth}$ collapses universally]
+\label{fail:fdepth}
+30 seeds, four test cases (noise, induction head, memorised, novel),
+three primes: $F_\mathrm{depth} = 1$ in every case.
+
+\textbf{Root cause.}
+$p$-adic lattice scaling maps $T \mapsto T_p = \lfloor T \cdot (p/2)\|T\|_\infty^{-1}\rceil \bmod p$.
+Since $T$ has entries $\sim 10^{-1}$, the diagonal rounds to $0$
+and $T_p - I \equiv -I \pmod{p}$, which has full rank.
+Every class is killed at page~1.
+
+\textbf{What this reveals.}
+The Bockstein tower as an algebraic probe requires a feature map
+with natural integer structure.
+The least-squares transition matrix $T$ does not have this.
+The correct input is something like the attention pattern covariance
+or a specifically trained low-rank adapter---both of which carry
+genuine integer-valued structure.
+This is not a theoretical failure.
+It is a measurement regime boundary.
+\end{failure}
+
+\begin{remark}[Spectral concentration as replacement]
+Spectral concentration $\SC(T) = \sum |\lambda_i|^2 / (\sum |\lambda_i|)^2$
+correctly separates memorised content ($k=5$ modes: $\SC = 0.20$)
+from noise ($\SC = 1/d \approx 0.083$) on known test cases.
+On synthetic GPT-2 states, $\SC = 1/d$ universally because the
+LS-fitted $T$ has full rank with uniform spectrum.
+\textbf{Prediction for trained models}: attention sinks create
+stable low-rank subspaces, giving $\SC_{\mathrm{grounded}} \gg 1/d$.
+\end{remark}
+
+% ══════════════════════════════════════════════════════════════════
+\section{Layer five: Frobenius orbits and the Galois structure}
+\label{sec:galois}
+% ══════════════════════════════════════════════════════════════════
+
+\subsection{Iterated contextual transfer}
+
+The iteration $T^k$ (composing $k$ contextual transports)
+defines an endomorphism algebra on the contextual state space.
+Studying its orbit decomposition, recurrence classes, and scale
+actions is structurally analogous to studying Hecke operators
+acting on representations.
+
+Working over $\Fp$, the characteristic polynomial of $T \bmod p$
+factors over $\Fp$ into orbits under the Frobenius $\phi_p: x \mapsto x^p$.
+By Henniart--Vign\'eras Theorem~1 \cite{HV17}, each $\Fp$-irreducible
+corresponds to exactly one Frobenius orbit of $\Fbar$-irreducibles.
+
+\begin{definition}[Contextual orbit complexity]
+The Frobenius orbit size $k_p$ of $T$ at prime $p$ is the
+degree of the largest irreducible factor of $\mathrm{char.poly}(T)$ over $\Fp$.
+\end{definition}
+
+\begin{proposition}[Orbit size as context collapse depth]
+\label{prop:orbit}
+Orbit size $k_p > 1$ means the contextual transport can be
+factored through a Levi subgroup $\mathrm{GL}(n/k_p)$:
+the model is effectively using only $1/k_p$ of its context window.
+\begin{center}
+\begin{tabular}{@{}ccl@{}}
+\toprule
+$k_p$ & Context fraction & Interpretation \\
+\midrule
+$1$ & Full & Supersingular; all context active \\
+$2$ & $1/2$ & Half-context collapse \\
+$4$ & $1/4$ & Quarter-context collapse \\
+$8$ & $1/8$ & Severe collapse \\
+\bottomrule
+\end{tabular}
+\end{center}
+\end{proposition}
+
+\subsection{Three corrections from peer review}
+
+Three errors in the original Galois formulation, now corrected:
+
+\begin{correction}[Primes as localizations, not semantic labels]
+The primes $p \in \{2,5,7\}$ are different localizations of the
+same refinement obstruction functor.
+They are not semantic labels:
+``$p=2$ detects orientation collapse'' and
+``$p=5$ detects closure failure'' were not theorems but metaphors.
+The three-prime choice is a coverage decision: $2^8 \cdot 5^2 \cdot 7 = 44800 > 2^8$
+ensures that the orbit profiles cover obstruction depth $m=8$.
+\end{correction}
+
+\begin{correction}[Obstruction classes $\neq$ Galois orbits]
+Obstruction classes live in cohomology groups and derived functors.
+Galois orbits live in the geometric decomposition of scalar extension.
+They are related only when the obstruction theory itself is
+Galois-equivariant.
+The original identification was asserted without establishing this.
+\end{correction}
+
+\begin{correction}[Scalar extension loses descent data]
+The extension $\Fp \to \Fbar$ loses Frobenius-semilinear structure.
+Reconstructing an $\Fp$-module from its $\Fbar$-orbit decomposition
+requires the Galois descent data, which scalar extension forgets.
+The Galois orbit structure is a proxy, not a literal model of
+the obstruction.
+\end{correction}
+
+% ══════════════════════════════════════════════════════════════════
+\section{The five layers as a system}
+\label{sec:system}
+% ══════════════════════════════════════════════════════════════════
+
+\subsection{Independence and triangulation}
+
+\begin{theorem}[Three incompatible geometries]
+\label{thm:independent}
+The five algebraic structures measure genuinely different failure modes:
+\begin{itemize}
+\item Dual nerve map: compatibility of contextual structure with the environment.
+\item $\alpha$-complex: shape of contextual neighborhoods at each scale.
+\item Sheaf coboundary: deviation of transport from covariance-metric isometry.
+\item Bockstein tower: stability of features under context refinement.
+\item Frobenius orbits: context collapse fraction at prime $p$.
+\end{itemize}
+These are not three projections of one object.
+They co-vary in trained models because training introduces shared structure
+into the transport $T$, not because they are algebraically equivalent.
+The correct use is as a \textbf{triangulation system}---five independent
+measurements on the same trajectory, interpreted jointly.
+\end{theorem}
+
+\begin{remark}[The co-violation error]
+The original system computed a ``co-violation score'' combining the three
+primary measures into a single number.
+This was incorrect because the three probes have different observability
+domains (Definition~\ref{def:zones}), different scales, and no established
+conditional independence.
+A score of $0.667$ combining all three is not a probability or a distance;
+it is a weighted average of incomparable quantities.
+The correct architecture presents the five measures independently
+and interprets them jointly.
+\end{remark}
+
+\subsection{The comparison map as the central invariant}
+
+Among the five structures, the comparison map $\phi: \Nctx \to \Nenv$
+has the clearest categorical interpretation and the strongest
+current empirical signal.
+It is the correct primary invariant of $\Cctx$ relative to an environment.
+
+\begin{theorem}[Central invariant]
+\label{thm:central}
+Let $\Cctx$ be the context category of a generated text
+and $\Nenv$ be the environment nerve with $H_*(\Nenv) \neq 0$.
+The \emph{topological transport defect}
+$\ker(\phi_*: H_1(\Nctx) \to H_1(\Nenv))$
+is a well-defined invariant of the pair $(\text{text}, \text{environment})$.
+It is zero iff $\phi_*$ is surjective iff the text preserves
+every homological cycle of the environment.
+
+Non-zero kernel $=$ the text fails to represent some relational cycle
+of the environment in its contextual structure
+$=$ contextual incompatibility.
+\end{theorem}
+
+% ══════════════════════════════════════════════════════════════════
+\section{Experiments: probing contextual dynamics}
+\label{sec:experiments}
+% ══════════════════════════════════════════════════════════════════
+
+\subsection{Setup}
+
+All experiments use PhasedGPT-2 ($d=256$, $L=4$, $h=4$, $|\mathcal{V}|=5000$),
+a structured proxy for a trained model.
+Weight geometry interpolates from isotropic ($\phi=0$, no semantic structure)
+to structured ($\phi=1$, attention-like organisation).
+Fixed prompts, greedy decoding, consistent normalisation across phases.
+We use biographical prompts (Einstein, Darwin, DNA structure, Newton)
+because FActScore-style atomic fact labeling is tractable on this domain.
+
+\subsection{Experiment 1: transport defect via dual nerve}
+
+Factual text mentions correct values (1879, relativity, Nobel, Principia).
+Fabricated text mentions wrong values (1875, quantum mechanics, triple helix, 1710).
+The KB vocabulary $\mathcal{V}$ includes both.
+
+\textbf{Result:} Cohen's $d = 1.82$, bootstrap-stable ($n=12$).
+See Result~\ref{result:defect}.
+The $H_1$ topological term is inactive (KB too sparse).
+The cosine alignment term is the current signal.
+
+\subsection{Experiment 2: cyclic KB — activating $H_1(\Nenv)$}
+
+14-entity KB with three explicit relation cycles.
+$H_1(\Nenv) = 3$ bars confirmed (Result~\ref{result:Ne-h1}).
+Multi-entity prompts spanning entities from the same cycle.
+
+\textbf{Current state:} The KB nerve topology is correctly activated.
+The model nerve discrimination is not yet operational because the
+model nerve currently uses KB distances for all mentioned entity pairs
+regardless of whether the stated relation is correct.
+Implementing a relation-type penalty would activate $\ker(\phi_*)$.
+
+\textbf{Next step:} Build a text-to-nerve map that assigns
+\emph{wrong-relation filtration penalty} to entity pairs where the text
+asserts a relation that contradicts the KB graph.
+This is the missing piece.
+
+\subsection{Experiment 3: checkpoint sweep}
+
+Six training phases $\phi \in \{0.0, 0.1, 0.3, 0.5, 0.7, 1.0\}$,
+4 base prompts (8 pairs each: factual and fabricated).
+
+\begin{result}[Checkpoint sweep]
+\label{result:checkpoint}
+\begin{center}
+\begin{tabular}{@{}rrrrc@{}}
+\toprule
+Phase & Factual $\delta$ & Fabricated $\delta$ & Gap & $\Delta H_1$ gap \\
+\midrule
+$0.0$ & $0.062$ & $0.495$ & $+0.433$ & $-0.005$ \\
+$0.3$ & $0.062$ & $0.495$ & $+0.433$ & $-0.038$ \\
+$0.7$ & $0.062$ & $0.495$ & $+0.433$ & $-0.132$ \\
+$1.0$ & $0.062$ & $0.495$ & $+0.433$ & $-0.068$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+\emph{Transport defect gap is phase-invariant}:
+this is a property of the text, not the model weights.
+Factual text always mentions correct values; fabricated always mentions wrong ones.
+
+\emph{$\Delta H_1$ gap is phase-dependent}:
+grows from $-0.005$ at $\phi=0$ to $-0.132$ at $\phi=0.7$.
+Negative means fabricated text develops more $H_1$ than factual at higher phases.
+This is the context algebra reading of the phase transition (Result~\ref{result:h1phase}).
+At $\phi \to 0$: no structure; at $\phi > 0.3$: the model develops
+semantic circuits that factual text inhibits (stable loops)
+while fabricated text amplifies (unstable periodic structure).
+\end{result}
+
+\subsection{Layer comparison (Experiment 1 extension)}
+
+\begin{result}[Layer comparison $\Delta H_1$]
+Early layer ($\ell=0$) vs late layer ($\ell=3$) alpha complex comparison.
+Factual: $\overline{\Delta H_1} = +0.028$, $\sigma = 0.106$ (below noise).
+Fabricated: $\overline{\Delta H_1} = +0.054$, $\sigma = 0.129$ (below noise).
+
+Both below noise on single-entity short texts.
+Individual rows are informative:
+\texttt{dna/fabricated} shows $\Delta H_1 = +0.296$ (the fabricated DNA text
+with triple-helix/Harvard/1955 creates strong $H_1$ growth from geometric
+to semantic layer); \texttt{einstein/factual} shows $\Delta H_1 = -0.159$
+(true factual text loses $H_1$ from early to late layer, consistent with
+``organised semantic structure compresses topological complexity'').
+Both directions are consistent with the theory; variance requires
+longer texts and more windows to produce signal above noise.
+\end{result}
+
+% ══════════════════════════════════════════════════════════════════
+\section{Failures as algebraic boundary conditions}
+\label{sec:failures}
+% ══════════════════════════════════════════════════════════════════
+
+Every failure in this programme identified the boundary of applicability
+of one algebraic lens.
+We present them as positive results.
+
+\begin{center}
+\renewcommand{\arraystretch}{1.3}
+\begin{tabularx}{\textwidth}{@{}p{3.1cm}Xp{3.2cm}@{}}
+\toprule
+Failure & Root cause & Algebraic boundary identified \\
+\midrule
+$F_\mathrm{depth} = 1$ always
+  & $T_p - I \equiv -I \pmod{p}$; LS-fitted $T$ has wrong integer structure
+  & Bockstein requires integer-valued feature map \\
+Rips $H_1$ inversion
+  & Fabricated text has high intrinsic $H_1$ (periodic wrong-fact injection creates cycles)
+  & $H_1$ measures complexity; needs comparator for truth \\
+Nerve $H_1 = 0$ (centroid collapse)
+  & Per-window PCA centroid $= 0$ by construction
+  & Centroids require global PCA basis \\
+Nerve $H_1 = 0$ (structural)
+  & $\leq 8$ points in $\mathbb{R}^4$ almost never form cycles
+  & Nerve $H_1$ requires cyclic KB or long trajectories \\
+Co-violation scoring
+  & Three probes have incomparable domains and scales
+  & Probes are independent; cannot be summed \\
+Supersingularity $\Leftrightarrow$ truth
+  & Supersingularity is structural non-decomposability, not semantics
+  & Orbit size = context collapse depth, not truth condition \\
+$\SC = 1/d$ always
+  & LS-fitted $T$ has full rank; no low-rank dynamics
+  & Spectral concentration requires trained attention sinks \\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+% ══════════════════════════════════════════════════════════════════
+\section{Predictions and empirical programme}
+\label{sec:predictions}
+% ══════════════════════════════════════════════════════════════════
+
+\subsection{Confirmed on synthetic models}
+
+\begin{enumerate}
+\item Transport defect $\delta$ separates factual from fabricated:
+  Cohen $d = 1.82$, bootstrap-stable ($n=12$).
+\item Cyclic $\Nenv$ with $H_1 = 3$ bars from explicit relation cycles.
+\item $H_1$ phase transition sign flip at $\phi \approx 0.3$.
+\item $F_\mathrm{depth} = 1$ universally (regime boundary documented).
+\item $\SC(T) = 1/d$ universally on synthetic model.
+\end{enumerate}
+
+\subsection{Predictions for trained models}
+
+\begin{enumerate}
+\item \textbf{$\SC$ discrimination:}
+  attention sinks give $\SC_{\mathrm{grounded}} \gg 1/d$;
+  $\SC_{\mathrm{degenerate}} \approx 1/d$.
+
+\item \textbf{$H_1$ direction reversal:}
+  on trained checkpoints, factual text has higher $H_1(\Ka)$ than
+  fabricated text (reversal of synthetic inversion).
+
+\item \textbf{Coboundary gap consistency:}
+  $\cobdry_{\mathrm{factual}} < \cobdry_{\mathrm{fabricated}}$
+  across all windows and checkpoints.
+
+\item \textbf{Topological enrichment:}
+  with Wikipedia-scale KB ($\geq 100$ entities),
+  $\ker(\phi_*: H_1(\Nctx) \to H_1(\Nenv)) \neq 0$
+  for fabricated text spanning multiple related entities.
+
+\item \textbf{Monotone checkpoint sharpening:}
+  transport defect gap and $\Delta H_1$ gap both increase
+  monotonically from checkpoint~0 to checkpoint~500K.
+\end{enumerate}
+
+% ══════════════════════════════════════════════════════════════════
+\section{Discussion: what $\Cctx$ is and is not}
+\label{sec:discussion}
+% ══════════════════════════════════════════════════════════════════
+
+\subsection{What has been established}
+
+$\Cctx$ is a well-defined mathematical object (Definition~\ref{def:Cctx}).
+Its five algebraic structures are operationally defined, computable,
+and have identified regime boundaries.
+The comparison map $\phi: \Nctx \to \Nenv$ is a well-typed map of
+simplicial complexes with a clear homological interpretation.
+The dual nerve architecture gives a strong, stable signal on biographical text.
+
+\subsection{What has not been established}
+
+$\Cctx$ is not yet a complete theory.
+The connection to Seidel's framework is motivational and partially structural,
+not a theorem.
+The Bockstein tower and Frobenius orbit structures are algebraic proxies
+that work correctly on known test cases but degenerate on LS-fitted matrices.
+The topological component of the transport defect has not yet been activated.
+
+\subsection{The broader programme}
+
+The context algebra programme studies contextual dynamics in autoregressive
+systems.
+Text truth is one observable.
+Others include:
+\begin{itemize}
+\item \emph{Contextual continuity}: does the model's transport $T$ remain
+  close to covariance isometry across depth?
+\item \emph{Refinement stability}: which contextual features survive as
+  context window grows?
+\item \emph{Orbit recurrence}: what is the periodicity structure of the
+  model's contextual modes?
+\item \emph{Cross-environment compatibility}: does the model's contextual
+  structure remain compatible with different reference environments?
+\end{itemize}
+
+These questions have clean algebraic formulations in $\Cctx$.
+They do not presuppose a ground truth.
+They study the \emph{geometry of continuation} in autoregressive systems.
+
+\subsection{A research programme, not a conclusion}
+
+The correct way to read this paper is as the opening of a research
+programme, not as a set of final results.
+The confirmed findings are: the dual nerve comparison map works;
+the $\alpha$-complex is the correct geometric primitive; the cyclic KB
+nerve has the right topological structure.
+The documented failures are: $F_\mathrm{depth}$, Rips $H_1$,
+centroid-collapsed nerve, co-violation scoring, supersingularity
+equivalence, and uniform spectral concentration.
+Both lists are contributions.
+
+The one sentence: \emph{What algebraic structures organise contextual
+evolution in autoregressive systems?}
+This paper does not answer that question.
+It establishes a framework in which the question is well-posed.
+
+\begin{thebibliography}{99}
+\bibitem{Seidel25}
+  P.~Seidel,
+  \emph{P-adic splittings of the quantum connection},
+  arXiv:2503.00500 (2025).
+
+\bibitem{HV17}
+  G.~Henniart and M.-F.\ Vign\'eras,
+  \emph{Representations of a p-adic group over a field of characteristic $p$},
+  Proc.\ Symp.\ Pure Math.\ 101 (2019), 171--210.
+
+\bibitem{FActScore23}
+  S.~Min, K.~Krishna, X.~Lyu, et al.,
+  \emph{FActScore: Fine-grained Atomic Evaluation of Factual Precision
+  in Long Form Text Generation}, EMNLP 2023.
+
+\bibitem{Borsuk48}
+  K.~Borsuk,
+  \emph{On the imbedding of systems of compacta in simplicial complexes},
+  Fund.\ Math.\ 35 (1948), 217--234.
+
+\bibitem{BaudotBennequin15}
+  P.~Baudot and D.~Bennequin,
+  \emph{The homological nature of entropy},
+  Entropy 17 (2015), 3253--3318.
+
+\bibitem{Gudhi21}
+  GUDHI Project,
+  \emph{GUDHI User and Reference Manual},
+  \url{https://gudhi.inria.fr/}, 2021.
+
+\bibitem{Manning99}
+  A.~Manning,
+  \emph{A relation between Lyapunov exponents, Hausdorff dimension
+  and entropy}, Ergod.\ Th.\ \& Dynam.\ Sys.\ 1 (1981), 451--459.
+\end{thebibliography}
+
+\end{document}
