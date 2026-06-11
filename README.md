@@ -1,3 +1,5 @@
+This is capturing how context algebra will produle pants co-products.
+
 <img width="778" height="616" alt="Screenshot 2026-06-10 at 8 59 11 PM" src="https://github.com/user-attachments/assets/f399416c-7b66-49c6-8d2e-34dfb85db933" />
 
 
