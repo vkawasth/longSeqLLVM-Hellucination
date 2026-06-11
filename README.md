@@ -88,6 +88,37 @@ Supersingular representations are the "atomic building blocks" that cannot be fa
 
 This is capturing how context algebra will produle pants co-products.
 
+The Key Theorem: Supersingular = Supercuspidal
+
+The fundamental result (Henniart-Vignéras, 2017; Abe-Henniart-Herzig-Vignéras) states
+
+:
+
+    Supersingularity is equivalent to supercuspidality.
+
+A representation ππ is supersingular if certain Hecke operators TPTP​ (elements of the pro-pp Iwahori Hecke algebra) act locally nilpotently on the space of II-invariants πIπI (where II is a pro-pp Iwahori subgroup)
+
+.
+
+This equivalence is profound: it means an irreducible representation is "primitive" (not induced from a smaller group) if and only if it satisfies this nilpotency condition.
+
+Classification Theorem: Every irreducible admissible representation of GG over a characteristic pp field can be uniquely written as
+
+:
+π≅IG(P,σ,Q)
+π≅IG​(P,σ,Q)
+
+where P⊂QP⊂Q are parabolic subgroups, and σσ is an irreducible admissible supersingular representation of a Levi subgroup.
+How Your Framework Uses This
+Representation Theory	Your Framework
+GG = full pp-adic group	Full context window of length nn
+Levi subgroup M⊊GM⊊G	Shorter context window of length n/kpn/kp​
+Parabolic induction	Compressing context from shorter window to full window (compositional decoding)
+Supersingular representation	Model genuinely uses the full context window (orbit size kp=1kp​=1)
+Non-supersingular (parabolically induced)	Model effectively computes from shorter window (orbit size kp>1kp​>1)
+
+The Levi subgroup MM corresponds to a factorization system: when the model collapses context, it's as if the representation factors through GL(n/kp)×⋯×GL(n/kp)GL(n/kp​)×⋯×GL(n/kp​) instead of GL(n)GL(n)
+
 <img width="778" height="616" alt="Screenshot 2026-06-10 at 8 59 11 PM" src="https://github.com/user-attachments/assets/f399416c-7b66-49c6-8d2e-34dfb85db933" />
 
 
