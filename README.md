@@ -117,7 +117,7 @@ Parabolic induction	Compressing context from shorter window to full window (comp
 Supersingular representation	Model genuinely uses the full context window (orbit size kp=1kp​=1)
 Non-supersingular (parabolically induced)	Model effectively computes from shorter window (orbit size kp>1kp​>1)
 
-The Levi subgroup MM corresponds to a factorization system: when the model collapses context, it's as if the representation factors through GL(n/kp)×⋯×GL(n/kp)GL(n/kp​)×⋯×GL(n/kp​) instead of GL(n)GL(n)
+The Levi subgroup MM corresponds to a factorization system: when the model collapses context, it's as if the representation factors through GL(n/kp)×⋯×GL(n/kp)GL(n/kp​)×⋯×GL(n/kp​) instead of GL(n)
 
 <img width="778" height="616" alt="Screenshot 2026-06-10 at 8 59 11 PM" src="https://github.com/user-attachments/assets/f399416c-7b66-49c6-8d2e-34dfb85db933" />
 
