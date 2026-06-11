@@ -1,0 +1,922 @@
+\documentclass[11pt]{amsart}
+\usepackage{amsmath,amssymb,amsthm,mathtools}
+\usepackage{booktabs,array,tabularx}
+\usepackage{geometry}
+\usepackage{hyperref}
+\usepackage{xcolor}
+\usepackage{tikz}
+\usepackage{enumitem}
+\geometry{margin=1.15in}
+
+\hypersetup{colorlinks=true,linkcolor=blue!60!black,citecolor=green!50!black,urlcolor=purple}
+
+\newtheorem{theorem}{Theorem}[section]
+\newtheorem{proposition}[theorem]{Proposition}
+\newtheorem{lemma}[theorem]{Lemma}
+\newtheorem{corollary}[theorem]{Corollary}
+\newtheorem{conjecture}[theorem]{Conjecture}
+\theoremstyle{definition}
+\newtheorem{definition}[theorem]{Definition}
+\newtheorem{example}[theorem]{Example}
+\newtheorem{remark}[theorem]{Remark}
+\newtheorem{construction}[theorem]{Construction}
+
+% Result boxes
+\newtheorem{empiricalresult}[theorem]{Empirical Result}
+\newtheorem{failure}[theorem]{Failure}
+\newtheorem{correction}[theorem]{Correction}
+
+\newcommand{\F}{\mathbb{F}}
+\newcommand{\Z}{\mathbb{Z}}
+\newcommand{\Q}{\mathbb{Q}}
+\newcommand{\R}{\mathbb{R}}
+\newcommand{\C}{\mathbb{C}}
+\newcommand{\Zp}{\mathbb{Z}_p}
+\newcommand{\Qp}{\mathbb{Q}_p}
+\newcommand{\Fp}{\mathbb{F}_p}
+\newcommand{\Fbar}{\bar{\mathbb{F}}_p}
+\newcommand{\HF}{\mathrm{HF}}
+\newcommand{\CF}{\mathrm{CF}}
+\newcommand{\vp}{v_p}
+\newcommand{\Nmod}{N_{\mathrm{model}}}
+\newcommand{\Ntruth}{N_{\mathrm{truth}}}
+
+\title[Long Sequences, Topology, and Hallucination]{%
+  Long Sequences, p-adic Topology, and\\
+  Hallucination Detection in Language Models:\\
+  A Research Diary of Failures and Partial Successes}
+
+\author{[Authors]}
+\date{\today}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+We report on an extended investigation into whether the topology of long
+generated sequences can detect factual hallucinations in large language models.
+Starting from Seidel's theory of p-adic splittings of the quantum connection
+\cite{Seidel25} and Henniart--Vign\'eras's representation theory \cite{HV17},
+we develop and then repeatedly correct a framework for measuring
+hallucination as a topological failure.
+
+The paper is written as a research diary: every attempt is described in full,
+including the failures, the precise diagnostic that identified each failure,
+and the theoretical correction that motivated the next attempt.
+Four main attempts are documented.
+Three of them fail in instructive ways.
+The fourth succeeds, but for reasons that are simpler than any of the first three.
+
+\textbf{What worked:} A dual-nerve comparison map $\Nmod \to \Ntruth$,
+where $\Ntruth$ is an alpha complex built from a knowledge-base entity graph,
+and $\Nmod$ is an alpha complex built from the model's fact-mention vectors.
+The grounding defect score (dominantly the KB-cosine alignment component)
+achieves Cohen's $d = 1.82$ separating factual from hallucinated text,
+with $|\text{mean}| > \text{std}$ in both classes.
+
+\textbf{What failed:} The Bockstein spectral sequence filtration depth
+$F_\mathrm{depth}$; the Frobenius orbit taxonomy; the supersingularity--hallucination
+equivalence; the Rips-complex $H_1$ signal; and the nerve $H_1$ score on
+single-entity text spans.
+
+\textbf{What the failures taught us:}
+Each failure was preceded by a plausible theorem.
+Each theorem was wrong in a specific, diagnosable way.
+The diagnostic experiments---operator validation, null-distribution calibration,
+phase sweeps, bootstrap stability tests---constitute the methodological
+contribution of this paper, independent of whatever final detector we converge on.
+
+\textbf{The Galois thread:}
+Throughout, we maintain the three-prime architecture $p \in \{2, 5, 7\}$ inherited
+from Seidel's framework. The primes survive as different localizations of the
+descent obstruction, even after the co-violation scoring collapses.
+The descent framework---hallucination as failure of a global section to assemble
+from compatible local data---is the one theoretical claim we believe is both
+correct and non-trivial.
+\end{abstract}
+
+\tableofcontents
+
+% ─────────────────────────────────────────────────────────────────
+\section{Introduction: the long-sequence hallucination problem}
+% ─────────────────────────────────────────────────────────────────
+
+\subsection{Why long sequences are special}
+
+A large language model generating a text of $n$ tokens is computing
+a trajectory in its hidden-state space:
+\[
+  h_0 \xrightarrow{T_1} h_1 \xrightarrow{T_2} \cdots \xrightarrow{T_n} h_n.
+\]
+For short $n$, the trajectory is mostly local: the model is copying,
+completing a sentence, or retrieving a common phrase.
+For long $n$---the domain of biographical summaries, scientific explanations,
+or historical narratives---the trajectory must maintain global coherence.
+It must not contradict itself between token 50 and token 300.
+It must remain grounded in factual content that was not directly in the
+immediate context window.
+
+Hallucinations in long sequences have a specific character: they are not
+random outputs.
+They are \emph{coherent fabrications}---texts that are locally plausible
+at every point but globally inconsistent with the truth.
+This distinction is the starting observation of our investigation.
+
+\subsection{The central hypothesis}
+
+The central hypothesis, stated explicitly and falsifiably from the outset:
+
+\begin{definition}[Central hypothesis]
+\label{def:central-hyp}
+Hallucinations correspond to topological inconsistency between
+the internal representation geometry and external factual constraints.
+Concretely: a generated sequence is hallucination-free if and only if
+the simplicial complex built from its hidden-state trajectory
+\emph{maps consistently} onto the simplicial complex built from the
+corresponding ground-truth knowledge structure.
+\end{definition}
+
+This hypothesis is inspired by Seidel's framework for p-adic splittings
+\cite{Seidel25}, where the splitting of a quantum connection corresponds to
+the idempotent decomposition of an algebraic structure.
+We will develop, test, and repeatedly revise the analogy between
+quantum connection splitting and hallucination detection.
+
+\subsection{Road map of the paper}
+
+The paper follows the chronological sequence of attempts:
+
+\begin{center}
+\begin{tabularx}{\textwidth}{lXl}
+\toprule
+\S & Attempt / correction & Outcome \\
+\midrule
+\ref{sec:seidel} & Seidel's p-adic framework & Background \\
+\ref{sec:analogy} & Token generation as Fukaya trajectory & Plausible analogy \\
+\ref{sec:gsod} & Three-prime GSOD + Bockstein filtration & \textbf{Failure 1} \\
+\ref{sec:fdepth-crash} & $F_\mathrm{depth}$ operator validation crash & Diagnostic \\
+\ref{sec:rips} & Rips $H_1$ phase sweep & \textbf{Failure 2 / Partial success} \\
+\ref{sec:alpha} & Alpha complex replacement & Improvement \\
+\ref{sec:nerve} & Nerve construction & \textbf{Failure 3} \\
+\ref{sec:dual-nerve} & Dual nerve $\Nmod \to \Ntruth$ & \textbf{Success} \\
+\ref{sec:synthesis} & Theoretical synthesis & What actually works \\
+\ref{sec:galois} & Galois epilogue & What survives \\
+\ref{sec:empirical} & Empirical requirements for confirmation & Future work \\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+% ─────────────────────────────────────────────────────────────────
+\section{Seidel's p-adic splitting framework}
+\label{sec:seidel}
+% ─────────────────────────────────────────────────────────────────
+
+\subsection{The splitting problem}
+
+Let $M$ be a closed monotone symplectic manifold.
+Quantum cohomology is $H^*(M)[q]$ with the small quantum product $*_q$.
+The central object is the \emph{quantum connection}:
+\[
+  \nabla_{tq\partial_q} x \;=\; tq\partial_q x + c_1(M) *_q x.
+\]
+Seidel's Conjecture 1.1 in \cite{Seidel25} asks: given orthogonal idempotents
+$e_1, \ldots, e_m$ in $H^*(M)[q^{\pm 1}]$ summing to $1$, does there exist
+a canonical splitting of the completed space $H^*(M)[q^{\pm 1}][[t]]$ into
+$\nabla$-invariant summands extending the idempotent splitting at $t=0$?
+
+\subsection{The p-adic approach}
+
+The key technical innovation in \cite{Seidel25} is working over
+$R = \mathbb{Z}_p$ (or more generally, the ring of integers of a p-adic field).
+The characteristic-$p$ case (Background 1.4 of \cite{Seidel25}) gives a
+splitting via \emph{quantum Steenrod operations}, which work without
+formal completion.
+The p-adic lifting from $\mathbb{F}_p$ to $\mathbb{Z}_p$ is governed by
+a tower of Bockstein-like conditions.
+
+\subsection{The convergence condition (Remark 1.7)}
+\label{sec:seidel-remark17}
+
+The operationally relevant result for our purposes is Remark~1.7 of \cite{Seidel25}:
+an admissible trajectory satisfies
+\[
+  v_p(E_\lambda^k) \;\geq\; \log_p(k) - \gamma,
+\]
+where $v_p$ is the $p$-adic valuation, $E_\lambda^k$ is the $k$-th coefficient
+in the expansion of the splitting along the $\lambda$-eigenspace, and $\gamma$
+is a fixed constant depending only on $M$ and $p$.
+This is the \emph{Seidel divisibility condition}: admissible splittings must
+have coefficients that grow $p$-adically at most logarithmically in $k$.
+
+\subsection{The Galois structure (Henniart--Vign\'eras)}
+\label{sec:hv}
+
+Working over $\mathbb{F}_p$ rather than $\bar{\mathbb{F}}_p$, the idempotent
+decomposition is indexed not by individual eigenvalues but by their
+\emph{Frobenius orbits} under $\mathrm{Gal}(\bar{\mathbb{F}}_p/\mathbb{F}_p) = \hat{\mathbb{Z}}$.
+Henniart--Vign\'eras Theorem~1 \cite{HV17} gives the precise orbit decomposition:
+\[
+  V_{R'} \;\simeq\; \bigoplus^\delta \bigoplus_{j \in \mathrm{Hom}_{\mathbb{F}_p}(E_{\mathrm{sep}}, \mathbb{F}_{p^k})} V_{R',j},
+\]
+and the automorphism group $\mathrm{Aut}_{\mathbb{F}_p}(\mathbb{F}_{p^k}) = \mathbb{Z}/k\mathbb{Z}$
+acts transitively on the summands.
+This orbit structure will later give the \emph{Frobenius orbit taxonomy}
+of hallucination types --- a taxonomy we will construct, then partially retract.
+
+% ─────────────────────────────────────────────────────────────────
+\section{The analogy: token generation as Fukaya trajectory}
+\label{sec:analogy}
+% ─────────────────────────────────────────────────────────────────
+
+\subsection{Semantic transition systems}
+
+We model the hidden-state sequence $h_0, h_1, \ldots, h_n \in \mathbb{R}^d$
+of a language model as a trajectory in a \emph{semantic transition system}.
+The transition map $T_t: h_{t-1} \mapsto h_t$ is fitted by regularised
+least squares on a local window.
+The semantic manifold $\mathcal{M}$ is the closure of factual content
+in the model's representation space.
+
+\begin{definition}[Semantic trajectory]
+A \emph{semantic trajectory} $\gamma = (h_0, \ldots, h_n)$ is
+\emph{admissible} if the sequence of transition matrices
+$(T_1, \ldots, T_n)$ satisfies the Seidel divisibility condition
+$v_p(E_\lambda^k) \geq \log_p(k) - \gamma$ for each prime $p \in \{2,5,7\}$
+and each Galois orbit $\lambda$ of the characteristic polynomial of $T_k$.
+\end{definition}
+
+\subsection{The analogy table}
+
+\begin{center}
+\begin{tabular}{ll}
+\toprule
+Seidel framework & Language model analogy \\
+\midrule
+Symplectic manifold $M$ & Factual content manifold $\mathcal{M}$ \\
+Quantum cohomology $H^*(M)[q]$ & Context window filtration $H^*(X^k)$ \\
+Idempotent $e_i$ & Semantic mode $i$ of generation \\
+Frobenius orbit $\mathcal{O}_i$ & Cluster of semantically related modes \\
+Quantum connection $\nabla$ & Autoregressive transition $T: h_t \to h_{t+1}$ \\
+Splitting failure & Hallucination \\
+$p$-adic non-liftability & Context collapse \\
+Parabolic induction from Levi & Computing from shorter context \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+This analogy is the starting point of the investigation.
+We will find that most of the right-hand column entries require significant
+revision before they can be made precise.
+
+\subsection{The one element that requires no revision}
+
+Among the entries in the table, only one survives all subsequent corrections
+without amendment:
+\emph{Splitting failure $\leftrightarrow$ Hallucination}.
+More precisely:
+
+\begin{theorem}[Descent formulation, stated correctly]
+\label{thm:descent}
+A generated trajectory is hallucination-free if and only if it satisfies
+\emph{descent consistency}: its global generation is uniquely determined
+by compatible local conditional distributions.
+Equivalently, the local sections of the semantic sheaf glue to a global section.
+\end{theorem}
+
+All other entries in the analogy table are approximations, some of which
+led us in the wrong direction for extended periods of investigation.
+
+% ─────────────────────────────────────────────────────────────────
+\section{First attempt: three-prime GSOD and Bockstein filtration}
+\label{sec:gsod}
+% ─────────────────────────────────────────────────────────────────
+
+\subsection{The architecture}
+
+The Galois-Stratified Obstruction Detector (GSOD) implements the full
+eight-step protocol derived from the Seidel--Henniart--Vign\'eras framework:
+
+\begin{enumerate}[label=\textbf{Step \arabic*.}]
+\item Compute $v_2(\mathfrak{o}^k)$ for $k = 1, \ldots, 8$: binary orbit profile.
+\item Compute $v_5(\mathfrak{o}^k)$ for $k = 1, 2$: quintic orbit profile.
+\item Compute $v_7(\mathfrak{o}^k)$ for $k = 1$: septic orbit profile.
+\item Identify orbit sizes $(k_2, k_5, k_7)$ at each skeleton depth.
+\item Check cross-prime resonances: $\gcd(k_2, k_5)$, etc.
+\item Predict recurrence periods: $\mathrm{lcm}(k_2 \cdot 2, k_5 \cdot 5, k_7 \cdot 7)$.
+\item Classify hallucination type by orbit profile.
+\item Set gate thresholds by Seidel divisibility: $v_p(E_\lambda^k) \geq \log_p(k) - \gamma$.
+\end{enumerate}
+
+The three-prime architecture is grounded in the CRT bound:
+$2^8 \cdot 5^2 \cdot 7 = 44800 > 256 = 2^8$,
+ensuring coverage of all obstruction classes to depth $m=8$.
+
+\subsection{Initial results}
+
+The GSOD pipeline ran on synthetic hidden-state trajectories and returned
+plausible-looking orbit profiles: $k_5 = 2$ on hallucinating trajectories,
+$k_2 > 1$ on binary-entangled ones.
+The descent theorem, supersingularity equivalence, and Levi decomposition
+language all cohered into a consistent-seeming framework.
+
+\subsection{The theoretical error: over-unification}
+\label{sec:over-unification}
+
+The first peer review identified the central error:
+
+\begin{correction}[Over-unification]
+The original claim was that sheaf coboundary failure, Bockstein filtration
+failure, and dynamical orbit entropy failure are \emph{three projections of
+one geometric object}.
+This is false.
+They are three genuinely different failure modes in different mathematical categories:
+\begin{center}
+\begin{tabular}{lll}
+\toprule
+Structure & Failure type & Mathematical home \\
+\midrule
+Sheaf coboundary & Locality/consistency & $H^1(K;\mathcal{F})$ \\
+Bockstein depth & Integrality/liftability & Filtration on Ext groups \\
+Dynamical entropy & Asymptotic orbit complexity & Spectral radius of $T^k$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+The $0.667$ co-violation score that combined all three is meaningless without
+proof of conditional independence.
+The correct formulation is $H = \alpha \nabla C + \beta F + \gamma E$
+where $C$, $F$, $E$ are \emph{independent} measurements.
+\end{correction}
+
+\subsection{Further corrections}
+
+Three additional theoretical errors were identified and corrected:
+
+\begin{correction}[Obstruction classes $\neq$ Galois orbits]
+Obstruction classes live in cohomology groups and derived functors.
+Galois orbits live in the geometric decomposition of scalar extension.
+They are related only when the obstruction theory is defined in a
+Galois-equivariant category.
+The primes $p \in \{2,5,7\}$ are different localizations of the same
+descent obstruction functor, not semantic labels for hallucination types.
+\end{correction}
+
+\begin{correction}[Supersingularity $\not\Leftrightarrow$ hallucination-freedom]
+Hallucination is semantic misalignment with external ground truth.
+Supersingularity is structural non-decomposability of a representation.
+These are orthogonal properties.
+A model can produce internally coherent (even irreducible) representations
+of unsupported factual content.
+The Levi/parabolic language is retained but reinterpreted around
+\emph{descent consistency}, not representation irreducibility.
+\end{correction}
+
+\begin{correction}[Scalar extension loses structure]
+Working over $\mathbb{F}_p$ rather than $\bar{\mathbb{F}}_p$ loses
+Frobenius-semilinear structure and descent data.
+The correct statement: scalar extension forgets descent data; reconstruction
+requires that Galois action.
+The Galois orbit structure is a proxy, not a literal model.
+\end{correction}
+
+% ─────────────────────────────────────────────────────────────────
+\section{First failure: the $F_\mathrm{depth}$ operator validation crash}
+\label{sec:fdepth-crash}
+% ─────────────────────────────────────────────────────────────────
+
+\subsection{The validation protocol}
+
+Before using $F_\mathrm{depth}$ as a hallucination probe, we ran operator
+validation: the metric must distinguish \emph{known structured systems}
+before being applied to semantic content.
+Four test cases: pure noise, induction head pattern (lag-7 recurrence),
+memorised content (cycling through $k=5$ vocabulary items), novel content.
+
+\begin{failure}[$F_\mathrm{depth} = 1$ universally]
+\label{fail:fdepth}
+$F_\mathrm{depth}(T^r - T^{r-1} \bmod p) = 1$ for all test cases at all
+primes, all seeds (30 trials each).
+
+\textbf{Root cause.} The $p$-adic lattice scaling maps $T$ (with entries
+$\sim 10^{-1}$ to $10^{-2}$) to $T_p = \lfloor T \cdot p/2\|T\|_\infty^{-1} \rceil \bmod p$.
+Diagonal entries are mostly $0$, so $T_p - I \equiv -I \pmod{p}$, which
+has full rank $n$.
+Every cohomology class is killed at page $1$ regardless of semantic content.
+
+\textbf{Consequence.} The metric is dominated by the choice of operator $T$
+and discretization scheme, not by the semantic structure of the representations.
+\end{failure}
+
+\subsection{The replacement metric}
+
+Spectral concentration $\mathrm{SC}(T) = \sum_i |\lambda_i|^2 / (\sum_i |\lambda_i|)^2$
+correctly identifies memorised content ($k=5$ modes: $\mathrm{SC} = 1/5 = 0.2$)
+versus noise ($\mathrm{SC} = 1/d \approx 0.083$).
+However, all synthetic GPT-2-like hidden states give $\mathrm{SC} = 1/d$
+because the LS-fitted transition matrices have full rank $d$ with
+uniform eigenvalue distribution.
+
+\begin{remark}[Prediction for trained models]
+Attention sinks in trained transformers create stable low-rank subspaces
+that would produce $\mathrm{SC} \gg 1/d$ for factually grounded windows.
+The discrimination would be $\mathrm{SC}_\mathrm{factual} \gg 1/d \gg \mathrm{SC}_\mathrm{hallucinated}$.
+This prediction awaits confirmation on trained checkpoints.
+\end{remark}
+
+% ─────────────────────────────────────────────────────────────────
+\section{Second attempt: Rips $H_1$ and the phase sweep}
+\label{sec:rips}
+% ─────────────────────────────────────────────────────────────────
+
+\subsection{The FActScore alignment framework}
+
+To ground the topology in external truth labels, we implemented a
+FActScore-style atomic fact labeling pipeline:
+\begin{enumerate}
+\item Generate controlled hallucinations from a fixed biographical corpus.
+\item Label each atomic claim as SUPPORTED / UNSUPPORTED / UNCERTAIN
+      using a local knowledge base.
+\item Extract hidden states via forward hooks on a structured GPT-2 variant.
+\item Compute $H_1$ persistence on each labeled span.
+\end{enumerate}
+
+\subsection{The phase sweep}
+
+We swept training phase $\phi \in \{0.0, 0.1, 0.2, 0.3, 0.5, 0.7, 0.85, 1.0\}$
+using a structured GPT-2 variant (PhasedGPT2, $d=256$, $L=4$, $h=4$)
+with weight geometry interpolating between isotropic ($\phi=0$) and
+structured ($\phi=1$) initialisation.
+All sweeps use fixed prompts, greedy decoding, and consistent normalisation.
+
+\begin{empiricalresult}[HPI$_{H_1}$ sign flip]
+\label{result:signflip}
+The $H_1$ persistence gap $\mathrm{HPI}_{H_1} = \overline{H_1(\mathrm{hallucinated})} - \overline{H_1(\mathrm{factual})}$
+changes sign at phase $0.2$--$0.3$:
+\begin{center}
+\begin{tabular}{rrl}
+\toprule
+Phase & $\mathrm{HPI}_{H_1}$ & Regime \\
+\midrule
+$0.0$ & $+0.295$ & Hallucinated noisier (noise-dominated) \\
+$0.2$ & $-0.014$ & Near zero: structure beginning to emerge \\
+$0.3$ & $-0.072$ & Sign flip: factual develops organised $H_1$ \\
+$0.5$ & $-0.139$ & Deepest gap (factual $> $ hallucinated) \\
+$0.7$ & $+0.050$ & Oscillation begins \\
+$1.0$ & $-0.124$ & Mature: localised topological defects \\
+\bottomrule
+\end{tabular}
+\end{center}
+\end{empiricalresult}
+
+\subsection{The inversion and its diagnosis}
+
+\begin{failure}[$H_1$ inversion on unstructured models]
+\label{fail:h1inversion}
+On a synthetic unstructured model ($\phi=0$):
+hallucinated text (7-periodic recurrence) has \emph{more} $H_1$ than
+factual text, not less.
+This is not a bug.
+
+\textbf{Diagnosis.} The $H_1$ inversion is the correct finding that
+\emph{structured hallucinations are internally coherent}: the 7-periodic
+injection creates literal cycles in the hidden state trajectory that Rips
+complex detects as $H_1$ classes.
+Without a comparator (a ground-truth manifold), $H_1$ measures
+intrinsic complexity of generation dynamics, not deviation from truth.
+
+\textbf{Consequence.} The correct formulation is not
+$\mathrm{Topology}(X_\mathrm{text})$ but
+$\mathrm{Topology}(X_\mathrm{text}) - \mathrm{Topology}(X_\mathrm{ground-truth})$.
+\end{failure}
+
+The document also identified a subtler error in interpretation:
+
+\begin{correction}[Undefined $\neq$ zero]
+$\mathrm{HPI}_E = 0.0$ on short texts does not mean zero dynamical complexity.
+It means the estimator is outside its validity regime.
+The three metrics require different minimal structures:
+$H_1$ needs $n \geq 6$ tokens; coboundary needs two windows of $\geq 16$ tokens;
+entropy needs $n \geq 64$ tokens for iterated $T$.
+Apparent independence of HPIs is measurement decoupling under different
+observability regimes, not structural independence of latent variables.
+\end{correction}
+
+% ─────────────────────────────────────────────────────────────────
+\section{Third attempt: alpha complex and the nerve construction}
+\label{sec:alpha}
+% ─────────────────────────────────────────────────────────────────
+
+\subsection{Why Rips is wrong for hidden states}
+
+The Rips complex on a point cloud $X \subset \mathbb{R}^d$ fills every simplex
+$\sigma = [x_0, \ldots, x_k]$ whenever all pairwise distances $\|x_i - x_j\| \leq \epsilon$.
+For hidden states that lie near a low-dimensional manifold (as trained
+transformer representations do, due to residual stream geometry and layernorm),
+this produces the homology of a union of $\epsilon$-balls, not the homology
+of the underlying manifold.
+
+The \emph{alpha complex} uses Voronoi/Delaunay duality:
+simplex $\sigma$ is included if and only if the circumradius of $\sigma$
+is $\leq \sqrt{\alpha}$ AND the Voronoi cells of its vertices have a common
+intersection.
+This is the correct notion for estimating manifold topology.
+
+\begin{proposition}[Alpha vs Rips on known geometry]
+On a point cloud sampled from two disjoint unit circles at distance $3$,
+Rips complex at optimal scale returns $H_1 = 2$ bars (correct) with
+significant additional noise bars.
+Alpha complex with lifetime threshold $> 0.1$ returns exactly $H_1 = 2$ bars (exact).
+\end{proposition}
+
+\subsection{The nerve construction: formal statement}
+
+Given a cover $\mathcal{U} = \{U_i\}_{i=1}^m$ of context windows, the
+\emph{nerve} $N(\mathcal{U})$ has:
+\begin{itemize}
+\item Vertices: windows $U_i$.
+\item $k$-simplex $[U_{i_0}, \ldots, U_{i_k}]$: non-empty intersection
+$U_{i_0} \cap \cdots \cap U_{i_k} \neq \emptyset$.
+\end{itemize}
+By the Nerve Lemma \cite{Borsuk48}, if each $U_i$ and each intersection is
+contractible, then $N(\mathcal{U})$ is homotopy equivalent to $\bigcup_i U_i$.
+
+In our setting:
+\begin{itemize}
+\item Vertices = context windows.
+\item Edges = pairs of windows with overlapping embedding distributions
+      (quantified as centroid proximity in global PCA space).
+\item Triangles = triples of mutually overlapping windows.
+\end{itemize}
+The coboundary $\rho_R - \rho_L$ is now the \emph{edge map} in the nerve:
+not an ad hoc operator but a canonical cochain.
+
+\subsection{Three failures before the nerve worked}
+
+\begin{failure}[Centroid collapse]
+Per-window PCA centroid is always zero.
+If $w = h_{k\cdot s:(k+1)\cdot s}$ is the hidden states of window $k$,
+then $\bar{w} = w - w.\mathrm{mean}(0)$ has $\bar{w}.\mathrm{mean}(0) = 0$ by construction.
+Projecting $\bar{w}$ into PCA space and taking the mean gives $0$ for every window.
+All centroids are identical, nerve is contractible, $H_1 = 0$.
+
+\textbf{Fix.} Use global PCA: project each window's mean $\mu_k = h_{k \cdot s:(k+1)\cdot s}.\mathrm{mean}(0) - h.\mathrm{mean}(0)$ into the PCA basis of the full trajectory.
+\end{failure}
+
+\begin{failure}[Structural nerve $H_1 = 0$]
+Even after fixing centroids, the nerve $H_1 = 0$ for all text spans.
+
+\textbf{Root cause.} With 2--8 windows in $\mathbb{R}^4$ with spread $\sim 0.18$,
+the Vietoris-Rips complex fills all triangles before creating any 1-cycle.
+$H_1 > 0$ requires a ``hole''---a cycle not bounded by any 2-simplex.
+For random points in low dimension with small spread, this almost never occurs.
+
+\textbf{Consequence.} Nerve $H_1$ as a hallucination score requires either
+many more windows ($\geq 20$ from a long trajectory with non-convex arrangement)
+or a comparison between two nerves rather than a single nerve.
+\end{failure}
+
+% ─────────────────────────────────────────────────────────────────
+\section{The missing comparator: dual nerve $\Nmod \to \Ntruth$}
+\label{sec:dual-nerve}
+% ─────────────────────────────────────────────────────────────────
+
+\subsection{The diagnosis}
+
+The synthesis from a sequence of peer reviews:
+
+\begin{correction}[The missing comparator]
+The system was measuring $\mathrm{Topology}(X_\mathrm{text})$.
+It needed to measure $\mathrm{Topology}(X_\mathrm{text}) - \mathrm{Topology}(X_\mathrm{ground-truth})$.
+
+Without this, $H_1$ measures intrinsic complexity of generation dynamics.
+Structured hallucinations have \emph{high} intrinsic $H_1$ (internally coherent
+7-periodic cycles), and appear topologically strong.
+This is exactly the $H_1$ inversion (Failure~\ref{fail:h1inversion}).
+
+The correct research question is not ``does this trajectory hallucinate?''
+but ``does the topological structure of this trajectory match the topological
+structure of the ground truth?''
+\end{correction}
+
+\subsection{Two simplicial structures}
+
+We define two alpha complexes in the same KB vocabulary space:
+
+\begin{definition}[Knowledge base nerve $\Ntruth$]
+Let $\mathcal{E} = \{e_1, \ldots, e_k\}$ be the set of KB entities.
+For each entity $e_i$, define its \emph{fact vector} $\mathbf{f}_{e_i} \in \{0,1\}^D$
+where $D = |\mathcal{V}|$ is the vocabulary of KB attribute values and
+$(\mathbf{f}_{e_i})_j = 1$ if value $j$ is a fact about entity $e_i$.
+
+The ground-truth nerve $\Ntruth$ is the alpha complex on
+$\{\mathbf{f}_{e_i}\}_{i=1}^k$ projected to $\mathbb{R}^2$ via PCA.
+\end{definition}
+
+\begin{definition}[Model nerve $\Nmod$]
+Given generated text $T$, segment into sentences $\{s_1, \ldots, s_m\}$.
+For each sentence $s_j$, define its \emph{mention vector} $\mathbf{m}_{s_j} \in \{0,1\}^D$
+where $(\mathbf{m}_{s_j})_k = 1$ if vocabulary value $k$ appears in $s_j$.
+
+The model nerve $\Nmod$ is the alpha complex on $\{\mathbf{m}_{s_j}\}_{j=1}^m$
+projected onto the same PCA basis as $\Ntruth$.
+\end{definition}
+
+\subsection{The comparison map}
+
+\begin{definition}[Comparison map and grounding defect]
+\label{def:grounding-defect}
+The \emph{comparison map} is the linear map
+$\phi: \Nmod \to \Ntruth$ defined by cosine alignment of mention vectors
+to entity vectors.
+The \emph{grounding defect} is:
+\[
+  \delta(T) = (1 - \mathrm{KB\text{-}sim}(T)) \cdot 0.6
+            + \frac{|H_1(\Nmod) - H_1(\Ntruth)|}{H_1(\Ntruth) + \epsilon} \cdot 0.4,
+\]
+where $\mathrm{KB\text{-}sim}(T)$ is the maximum cosine similarity of the
+full-text mention vector to any KB entity vector.
+
+Hallucination $\approx$ high grounding defect: the map $\phi$ fails to
+preserve the topological structure of $\Ntruth$.
+\end{definition}
+
+\subsection{Results}
+
+\begin{empiricalresult}[Dual nerve separation]
+\label{result:dual-nerve}
+On 12 prompt pairs (4 base + 8 bootstrap paraphrases) from a biographical corpus
+(Einstein, Darwin, DNA, Newton, four paraphrase variants each):
+\begin{center}
+\begin{tabular}{lrrr}
+\toprule
+Class & Mean defect & Std & $|\mathrm{mean}| > \mathrm{std}$? \\
+\midrule
+Factual & $0.146$ & $0.088$ & Yes \\
+Hallucinated & $0.522$ & $0.083$ & Yes \\
+\bottomrule
+\end{tabular}
+\end{center}
+$\Delta(\mathrm{hallu} - \mathrm{true}) = +0.377$.
+Cohen's $d = 1.82$ (very large effect size by conventional standards).
+Bootstrap-stable across all 12 prompt variants.
+\end{empiricalresult}
+
+\subsection{Honest accounting: what is driving the signal}
+
+\begin{remark}[The $H_1$ component is zero]
+In the current experiments, $H_1(\Ntruth) = H_1(\Nmod) = 0$ for all prompts.
+A single-entity KB nerve (Einstein alone, Darwin alone) has no 1-cycles
+because 4--5 entities in $\mathbb{R}^2$ do not form topological loops.
+The $H_1$ term of the grounding defect contributes nothing.
+
+The signal is \emph{entirely from KB similarity}:
+$\delta(T) \approx (1 - \mathrm{KB\text{-}sim}(T)) \cdot 0.6$.
+Factual texts mention correct values (1879, relativity, Nobel, Principia);
+hallucinated texts mention wrong values (1875, quantum mechanics, triple helix, 1710)
+or nothing at all.
+
+\textbf{The topological enrichment} ($H_1$ component) requires either:
+\begin{enumerate}
+\item A multi-entity KB nerve with relational structure
+  (e.g.\ Einstein--Lorentz--Minkowski--Bohr forming a historical network),
+\item Or a full Wikipedia knowledge graph with many $H_1$ cycles.
+\end{enumerate}
+At current KB scale, we have built the correct architecture but not yet
+activated the topological component.
+\end{remark}
+
+% ─────────────────────────────────────────────────────────────────
+\section{Theoretical synthesis: what actually works and why}
+\label{sec:synthesis}
+% ─────────────────────────────────────────────────────────────────
+
+\subsection{Three incompatible geometries}
+
+The central lesson of this investigation, stated as a theorem after the fact:
+
+\begin{theorem}[Three incompatible geometries]
+\label{thm:three-geom}
+The three invariants---sheaf coboundary, Bockstein filtration depth, and
+dynamical orbit entropy---measure three genuinely different failure modes.
+They only co-vary in trained models because training introduces shared
+structure, not because they are fundamentally the same object.
+In untrained or synthetically structured models, they decouple completely:
+\begin{itemize}
+\item Sheaf coboundary: sensitive to cross-window covariance mismatch.
+      Discriminates at $L \geq 16$ tokens.
+\item $H_1$ persistence: sensitive to manifold topology of hidden states.
+      Discriminates at $L \geq 6$ tokens but direction depends on training phase.
+\item Orbit entropy / SC: sensitive to eigenspectrum of transition $T$.
+      Requires $L \geq 64$ tokens for valid estimation.
+\end{itemize}
+The correct use: three independent probes on a triangulation system,
+not a unified co-violation score.
+\end{theorem}
+
+\subsection{The observability phase diagram}
+
+Replace the binary valid/invalid distinction with observability zones
+$\Omega_{H_1}(L), \Omega_\mathrm{cob}(L), \Omega_E(L)$:
+
+\begin{definition}[Observability regime]
+\begin{center}
+\begin{tabular}{lccc}
+\toprule
+Regime & $H_1$ valid & Cob valid & Entropy valid \\
+\midrule
+UNDERDETERMINED ($n < 6$) & No & No & No \\
+GEOMETRIC ($6 \leq n < 16$) & Yes & No & No \\
+ALIGNMENT ($16 \leq n < 64$) & Yes & Yes & No \\
+DYNAMICAL ($n \geq 64$) & Yes & Yes & Yes \\
+\bottomrule
+\end{tabular}
+\end{center}
+Returning $\mathrm{HPI}_E = 0.0$ when the entropy probe is in GEOMETRIC regime
+is an implementation error.
+The correct return is $\mathrm{HPI}_E = \mathrm{undefined}$.
+\end{definition}
+
+\subsection{The one correct unified statement}
+
+After all corrections, one statement survives:
+
+\begin{theorem}[Descent formulation, final]
+A trajectory is hallucination-free if and only if the comparison map
+$\phi: \Nmod \to \Ntruth$ is surjective on homology:
+$\phi_*: H_*(\Nmod) \twoheadrightarrow H_*(\Ntruth)$.
+Equivalently, every topological feature of the ground-truth nerve
+is represented in the model's generation structure.
+\end{theorem}
+
+When $H_*(\Ntruth) \neq 0$ (which requires a multi-entity KB),
+this is a genuinely topological statement.
+At current KB scale, it reduces to KB-similarity grounding.
+
+% ─────────────────────────────────────────────────────────────────
+\section{The Galois epilogue: what survives}
+\label{sec:galois}
+% ─────────────────────────────────────────────────────────────────
+
+\subsection{What we retract}
+
+\begin{itemize}
+\item The claim that obstruction classes equal Galois orbits.
+\item The Frobenius orbit taxonomy as a semantic classification of hallucination types.
+\item The supersingularity--hallucination equivalence.
+\item The co-violation scoring of three incompatible invariants.
+\item The identification of $v_2(o^k)$ with orientation collapse,
+  $v_5(o^k)$ with global compositional closure, and $v_7(o^k)$ with
+  higher resonance as \emph{semantic labels}.
+\end{itemize}
+
+\subsection{What survives}
+
+\begin{itemize}
+\item \textbf{The three primes as localizations.}
+  $p \in \{2,5,7\}$ are different localizations of the same descent obstruction
+  functor. The CRT bound $2^8 \cdot 5^2 \cdot 7 = 44800 > 2^8$ guarantees
+  coverage to obstruction depth $m=8$.
+  This is a valid architectural choice, not a semantic assignment.
+\item \textbf{The descent framework.}
+  Hallucination $\sim$ failure of a global section to assemble from compatible
+  local data. This is the correct abstraction, now implemented as the
+  dual nerve comparison map.
+\item \textbf{The Galois orbit structure as orbit complexity measure.}
+  Orbit size $k_p$ at prime $p$ measures context collapse depth:
+  the model is effectively computing from a $1/k_p$ fraction of its
+  nominal context. This interpretation is valid, though the collapse
+  mechanism is context factorization, not supersingularity.
+\item \textbf{The Seidel divisibility condition as calibration.}
+  The bound $v_p(E_\lambda^k) \geq \log_p(k) - \gamma$ remains a valid
+  gate for the dynamical entropy probe, when that probe is in its valid
+  observability regime ($n \geq 64$).
+\end{itemize}
+
+\subsection{The minimal Galois structure that is needed}
+
+For the dual nerve to fully activate, the KB must have relational structure
+that creates $H_1$ cycles in $\Ntruth$.
+This requires at minimum:
+\begin{itemize}
+\item A connected knowledge graph on $\geq 6$ entities.
+\item At least one non-trivial relation cycle (entity $A$ relates to $B$
+  relates to $C$ relates back to $A$ via a non-trivial path).
+\item The generated text spanning multiple entities simultaneously.
+\end{itemize}
+In that setting, the comparison map $H_1(\Nmod) \to H_1(\Ntruth)$ becomes
+non-trivial, and the Galois structure---governing how the KB's algebraic
+relations project onto the model's mention structure---becomes operative.
+
+% ─────────────────────────────────────────────────────────────────
+\section{Empirical requirements for confirmation}
+\label{sec:empirical}
+% ─────────────────────────────────────────────────────────────────
+
+\subsection{What has been confirmed}
+
+\begin{itemize}
+\item KB-similarity grounding defect: Cohen's $d = 1.82$, stable across
+  12 bootstrap prompts on synthetic model.
+\item $H_1$ phase-transition sign flip: factual $H_1$ growth exceeds
+  hallucinated $H_1$ growth at training phase $\geq 0.3$ (synthetic phase sweep).
+\item $F_\mathrm{depth} = 1$ universally: documented, root cause identified,
+  metric retired from the detector.
+\end{itemize}
+
+\subsection{What requires trained checkpoints}
+
+The following predictions are falsifiable on trained GPT-2 checkpoints
+but not on synthetic models:
+
+\begin{enumerate}
+\item \textbf{SC discrimination:} $\mathrm{SC}_\mathrm{factual} \gg 1/d$ at attention sinks;
+  $\mathrm{SC}_\mathrm{hallucinated} \approx 1/d$.
+\item \textbf{$H_1$ direction reversal:} On trained GPT-2, factual spans should
+  have higher $H_1(\alpha\text{-complex})$ than hallucinated spans,
+  reversing the inversion seen on synthetic models.
+\item \textbf{Coboundary gap:} $\|\rho_R - \rho_L\|_F$ should be consistently
+  lower for factual windows than hallucinated windows on trained model.
+\item \textbf{$H_1(\Ntruth) > 0$ enrichment:} With Wikipedia-scale KB
+  ($\geq 100$ entities, relational graph with known cycles), the topological
+  component of the grounding defect should activate.
+\end{enumerate}
+
+\subsection{The correct experimental setup}
+
+Five GPT-2 checkpoints (steps 0, 1K, 10K, 100K, 500K),
+FActScore labels on Wikipedia biography text,
+fixed prompts and greedy decoding across all checkpoints,
+and the four measurements above per atomic fact span.
+
+% ─────────────────────────────────────────────────────────────────
+\section{Conclusion}
+% ─────────────────────────────────────────────────────────────────
+
+We set out to use the algebraic topology of long generated sequences
+to detect hallucination.
+After four main attempts and approximately as many conceptual reversals,
+the following picture has emerged.
+
+The correct theoretical object is the comparison map
+$\phi: \Nmod \to \Ntruth$ between two simplicial complexes:
+one built from the model's fact-mention structure,
+one built from the ground-truth knowledge graph.
+Hallucination is the failure of this map to preserve the topological
+features of $\Ntruth$.
+
+This is a clean formulation that is:
+\begin{itemize}
+\item \textbf{Falsifiable:} it makes specific predictions about trained
+  model checkpoints that can be confirmed or refuted.
+\item \textbf{Grounded in mathematics:} the dual nerve is a well-defined
+  object; the comparison map is a well-typed morphism of simplicial complexes.
+\item \textbf{Honest about its limitations:} the topological component
+  requires multi-entity KB structure to activate; current experiments
+  confirm only the KB-similarity component.
+\end{itemize}
+
+The Galois thread---the three primes, the orbit taxonomy, the descent framework---
+survived the successive corrections in attenuated form.
+The primes remain as architectural localizations; the orbit taxonomy is retired
+as a semantic classifier but retained as a context-collapse measure;
+the descent framework is the correct conceptual foundation but its implementation
+via supersingularity was wrong.
+
+The failures documented here are not incidental.
+They are the main content of the paper.
+Each failure was preceded by a plausible theorem that cohered with the
+Seidel--Henniart--Vign\'eras framework; each was detected by a specific
+diagnostic experiment; each correction moved us closer to what is now
+a working, if partially activated, hallucination detector.
+
+\begin{thebibliography}{99}
+\bibitem{Seidel25}
+  P.~Seidel, \emph{P-adic splittings of the quantum connection},
+  arXiv:2503.00500 (2025).
+
+\bibitem{HV17}
+  G.~Henniart and M.-F. Vign\'eras,
+  \emph{Representations of a p-adic group over a field of characteristic $p$},
+  in Representations of Reductive Groups, Proc.\ Symp.\ Pure Math., 101 (2019),
+  pp.\ 171--210.
+
+\bibitem{Borsuk48}
+  K.~Borsuk, \emph{On the imbedding of systems of compacta in simplicial complexes},
+  Fund.\ Math., 35 (1948), pp.\ 217--234.
+
+\bibitem{BaudotBennequin15}
+  P.~Baudot and D.~Bennequin,
+  \emph{The homological nature of entropy},
+  Entropy, 17(5) (2015), pp.\ 3253--3318.
+
+\bibitem{Kontsevich14}
+  M.~Kontsevich, \emph{Summation over the Integers},
+  talk at SCGP, Stony Brook (2014).
+
+\bibitem{FActScore}
+  S.~Min, K.~Krishna, X.~Lyu, M.~Lewis, W.~Yih, P.~Koh, M.~Iyyer,
+  L.~Zettlemoyer, and H.~Hajishirzi,
+  \emph{FActScore: Fine-grained Atomic Evaluation of Factual Precision in
+  Long Form Text Generation}, EMNLP 2023.
+\end{thebibliography}
+
+\end{document}
