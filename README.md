@@ -83,7 +83,7 @@ The Levi subgroup language is retained but reinterpreted:
 
 One Sentence
 
-Supersingular representations are the "atomic building blocks" that cannot be factored through a proper Levi subgroup (shorter context window), and the Henniart-Vignéras classification theorem guarantees that every irreducible admissible representation decomposes uniquely into such blocks — which in your framework means that orbit size kpkp​ measures context collapse: kp=1kp​=1 means supersingular (full context active), kp>1kp​>1 means the representation is parabolically induced from a Levi subgroup GL(n/kp)GL(n/kp​), i.e., the model is effectively using only a fraction 1/kp1/kp​ of its context window.
+Supersingular representations are the "atomic building blocks" that cannot be factored through a proper Levi subgroup (shorter context window), and the Henniart-Vignéras classification theorem guarantees that every irreducible admissible representation decomposes uniquely into such blocks — which in your framework means that orbit size kpkp​ measures context collapse: kp=1 means supersingular (full context active), kp>1kp​>1 means the representation is parabolically induced from a Levi subgroup GL(n/kp), i.e., the model is effectively using only a fraction 1/kp​ of its context window.
 
 
 This is capturing how context algebra will produle pants co-products.
