@@ -1,0 +1,33 @@
+{
+  "model": "llama3.2:1b",
+  "blocks_run": "D",
+  "n_topics": 2,
+  "topics": [
+    "Albert Einstein",
+    "GPT-2 Model"
+  ],
+  "block_summary": {
+    "D": {
+      "fact_collapse": 0.28117710040074584,
+      "fab_collapse": 0.2926996410547774,
+      "separation": 0.011522540654031577,
+      "passed": true
+    }
+  },
+  "topic_results": [
+    {
+      "topic": "Albert Einstein",
+      "factscore_factual": 0.0,
+      "factscore_fabricated": 0.0,
+      "analysis_factual": {},
+      "analysis_fabricated": {}
+    },
+    {
+      "topic": "GPT-2 Model",
+      "factscore_factual": 0.0,
+      "factscore_fabricated": 0.0,
+      "analysis_factual": {},
+      "analysis_fabricated": {}
+    }
+  ]
+}

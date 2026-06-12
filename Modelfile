@@ -1,0 +1,2 @@
+FROM mapler/gpt2
+PARAMETER num_ctx 1024

@@ -1,0 +1,143 @@
+{
+  "model": "llama3.2:1b",
+  "blocks": "A,B,C,D,E",
+  "topics": [
+    "Albert Einstein",
+    "GPT-2 Model"
+  ],
+  "block_summary": {
+    "A": {
+      "cohen_d": -0.994089426515138,
+      "fact_mean": 1.0040269626639156,
+      "fab_mean": 0.5895872060650227,
+      "passed": false,
+      "rows": [
+        {
+          "topic": "Albert Einstein",
+          "fs_f": 1.0,
+          "fs_b": 1.0,
+          "dtf": 1.0018714309713133,
+          "dtb": 1.1791744121300454
+        },
+        {
+          "topic": "GPT-2 Model",
+          "fs_f": 1.0,
+          "fs_b": 1.0,
+          "dtf": 1.0061824943565179,
+          "dtb": 0
+        }
+      ]
+    },
+    "B": {
+      "fact_k5": 2.0,
+      "fab_k5": 2.0,
+      "fact_idem": 3.2516275690861094,
+      "fab_idem": 4.8886189571391645,
+      "k5_sep": 0.0,
+      "idem_sep": 1.636991388053055,
+      "passed": true
+    },
+    "C": {
+      "fact_depth": 8.0,
+      "fab_depth": 8.0,
+      "separation": 0.0,
+      "passed": false
+    },
+    "D": {
+      "fact_collapse": 0.39725117397663195,
+      "fab_collapse": 0.3700951923938027,
+      "separation": -0.02715598158282928,
+      "passed": false
+    },
+    "E": {
+      "flat_dt": 1.0816805959261093,
+      "scrambled_dt": 1.0003857479491276,
+      "contradiction_dt": 0.9984847758816773,
+      "control_ok": false,
+      "spike_ok": false,
+      "passed": false
+    }
+  },
+  "topic_results": [
+    {
+      "topic": "Albert Einstein",
+      "factscore_factual": 1.0,
+      "factscore_fabricated": 1.0,
+      "analysis_factual": {
+        "transport_defect": 1.0018714309713133,
+        "defect_by_window": [
+          0.9994532313546131,
+          1.0019182234724995,
+          1.0016336563926322,
+          1.0018686801625152,
+          1.0044833634743064
+        ],
+        "spike_window": 4,
+        "k2": 1.0,
+        "k5": 2.0,
+        "k7": 1.0,
+        "d2": 8.0,
+        "d5": 8.0,
+        "d7": 8.0,
+        "v2": 1.968275893060103,
+        "v5": 0.8476902869619588,
+        "idempotency_dev": 2.3450638236832386,
+        "hessenberg_viol": 0.5737157516747742,
+        "context_frac": 0.5,
+        "supersingular": false
+      },
+      "analysis_fabricated": {
+        "transport_defect": 1.1791744121300454,
+        "defect_by_window": [
+          1.2925657882874737,
+          1.2004686543048217,
+          1.150011603904139,
+          1.0903633358165319,
+          1.162462678337261
+        ],
+        "spike_window": 0,
+        "k2": 1.0,
+        "k5": 2.0,
+        "k7": 1.0,
+        "d2": 8.0,
+        "d5": 8.0,
+        "d7": 8.0,
+        "v2": 6.107750774821739,
+        "v5": 2.6304650812703256,
+        "idempotency_dev": 4.8886189571391645,
+        "hessenberg_viol": 0.624947436074699,
+        "context_frac": 0.5,
+        "supersingular": false
+      }
+    },
+    {
+      "topic": "GPT-2 Model",
+      "factscore_factual": 1.0,
+      "factscore_fabricated": 1.0,
+      "analysis_factual": {
+        "transport_defect": 1.0061824943565179,
+        "defect_by_window": [
+          0.9998404553164618,
+          1.0100696118399675,
+          1.01302909107649,
+          1.007527335867716,
+          1.0004459776819552
+        ],
+        "spike_window": 2,
+        "k2": 1.0,
+        "k5": 2.0,
+        "k7": 1.0,
+        "d2": 8.0,
+        "d5": 8.0,
+        "d7": 8.0,
+        "v2": 4.243559512472315,
+        "v5": 1.8276016048111825,
+        "idempotency_dev": 4.15819131448898,
+        "hessenberg_viol": 0.5262322545340231,
+        "context_frac": 0.5,
+        "supersingular": false
+      },
+      "analysis_fabricated": {}
+    }
+  ]
+}

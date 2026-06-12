@@ -1,0 +1,166 @@
+{
+  "model": "llama3.2:1b",
+  "blocks_run": "A,B,C,D,E",
+  "n_topics": 2,
+  "topics": [
+    "Albert Einstein",
+    "GPT-2 Model"
+  ],
+  "block_summary": {
+    "A": {
+      "cohen_d": 13.7404119094606,
+      "fact_mean": 1.000374871164249,
+      "fab_mean": 1.123526421126081,
+      "passed": true,
+      "rows": [
+        {
+          "topic": "Albert Einstein",
+          "fs_factual": 0.6,
+          "fs_fabricated": 0.3333333333333333,
+          "dt_factual": 1.0001862269870936,
+          "dt_fabricated": 1.1108526160298375
+        },
+        {
+          "topic": "GPT-2 Model",
+          "fs_factual": 1.0,
+          "fs_fabricated": 1.0,
+          "dt_factual": 1.0005635153414045,
+          "dt_fabricated": 1.1362002262223243
+        }
+      ]
+    },
+    "B": {
+      "fact_k5": 2.0,
+      "fab_k5": 2.0,
+      "fact_idem": 3.545865787497782,
+      "fab_idem": 4.369746666078233,
+      "k5_sep": 0.0,
+      "idem_sep": 0.8238808785804506,
+      "passed": true
+    },
+    "C": {
+      "fact_depth": 8.0,
+      "fab_depth": 8.0,
+      "separation": 0.0,
+      "passed": false
+    },
+    "D": {
+      "fact_collapse": 0.2947098314090437,
+      "fab_collapse": 0.2556779186904039,
+      "separation": -0.039031912718639816,
+      "passed": false
+    },
+    "E": {
+      "flat_dt": 0.9965736715065473,
+      "scrambled_dt": 1.000815490808113,
+      "contradiction_dt": 1.060361962057677,
+      "control_ok": true,
+      "spike_ok": true,
+      "passed": true
+    }
+  },
+  "topic_results": [
+    {
+      "topic": "Albert Einstein",
+      "factscore_factual": 0.6,
+      "factscore_fabricated": 0.3333333333333333,
+      "analysis_factual": {
+        "transport_defect": 1.0001862269870936,
+        "defect_by_window": [
+          0.9985362681024854,
+          1.0005808867636143,
+          0.9975020879998416,
+          1.0026878666050718,
+          1.0016240254644542
+        ],
+        "spike_window": 3,
+        "k2": 2.0,
+        "k5": 2.0,
+        "k7": 1.0,
+        "d2": 8.0,
+        "d5": 8.0,
+        "d7": 8.0,
+        "v2": 2.883334369837625,
+        "v5": 1.2417845221763841,
+        "idempotency_dev": 2.58052685303863,
+        "hessenberg_viol": 0.7974308432109327,
+        "context_frac": 0.5,
+        "supersingular": false
+      },
+      "analysis_fabricated": {
+        "transport_defect": 1.1108526160298375,
+        "defect_by_window": [
+          1.1318361104219896,
+          1.0540031269468257,
+          1.03651925340088,
+          0.8799267580835289,
+          1.4519778312959635
+        ],
+        "spike_window": 4,
+        "k2": 2.0,
+        "k5": 2.0,
+        "k7": 1.0,
+        "d2": 8.0,
+        "d5": 8.0,
+        "d7": 8.0,
+        "v2": 4.823315040738392,
+        "v5": 2.0772887202488386,
+        "idempotency_dev": 4.874719402776081,
+        "hessenberg_viol": 0.38637077747964543,
+        "context_frac": 0.5,
+        "supersingular": false
+      }
+    },
+    {
+      "topic": "GPT-2 Model",
+      "factscore_factual": 1.0,
+      "factscore_fabricated": 1.0,
+      "analysis_factual": {
+        "transport_defect": 1.0005635153414045,
+        "defect_by_window": [
+          1.0169080696490265,
+          0.991489836071385,
+          1.0038351004202763,
+          1.0003124726587145,
+          0.9902720979076195
+        ],
+        "spike_window": 0,
+        "k2": 2.0,
+        "k5": 2.0,
+        "k7": 1.0,
+        "d2": 8.0,
+        "d5": 8.0,
+        "d7": 8.0,
+        "v2": 4.940573933119146,
+        "v5": 2.12778937642288,
+        "idempotency_dev": 4.5112047219569344,
+        "hessenberg_viol": 0.4160738856844926,
+        "context_frac": 0.5,
+        "supersingular": false
+      },
+      "analysis_fabricated": {
+        "transport_defect": 1.1362002262223243,
+        "defect_by_window": [
+          1.213848794715934,
+          1.015066438820659,
+          0.981399500983671,
+          1.2120246023812387,
+          1.2586617942101177
+        ],
+        "spike_window": 4,
+        "k2": 2.0,
+        "k5": 2.0,
+        "k7": 1.0,
+        "d2": 8.0,
+        "d5": 8.0,
+        "d7": 8.0,
+        "v2": 6.38016138725534,
+        "v5": 2.847060957175601,
+        "idempotency_dev": 3.864773929380385,
+        "hessenberg_viol": 0.4817111790938974,
+        "context_frac": 0.5,
+        "supersingular": false
+      }
+    }
+  ]
+}
