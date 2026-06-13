@@ -12,18 +12,18 @@
 
 #    --blocks A,B,E \
 
-python ctx_algebra_ollama_suite.py \
-    --blocks D \
-    --topics "Albert Einstein,GPT-2 Model" \
-    --save results_first_run.json \
-    --kb my_knowledge_source_1_fix_factscore_inv.jsonl \
-    --verbose
+#python ctx_algebra_ollama_suite.py \
+#    --blocks D \
+#    --topics "Albert Einstein,GPT-2 Model" \
+#    --save results_first_run.json \
+#    --kb my_knowledge_source_1_fix_factscore_inv.jsonl \
+#    --verbose
 
 # Full run all 5 blocks
-python ctx_algebra_ollama_suite_v2.py \
-    --blocks A,B,C,D,E \
-    --save results_v2.json \
-    --verbose
+#python ctx_algebra_ollama_suite_v2.py \
+#    --blocks A,B,C,D,E \
+#    --save results_v2.json \
+#    --verbose
 
 # Quick: just the fixed Block D to verify embedding similarity works
 #python ctx_algebra_ollama_suite_v2.py \
@@ -34,3 +34,10 @@ python ctx_algebra_ollama_suite_v2.py \
 #python ctx_algebra_ollama_suite_v2.py \
 #    --blocks A,B,D,E \
 #    --save results_v2.json
+
+
+python hessenberg_test_v2.py \
+    --model distilgpt2 \
+    --layers last \
+    --save hessenberg_distilgpt2.json \
+    --verbose
