@@ -1253,7 +1253,7 @@ The Floer approximation is controlled by the cup error $= m_3$.
 \subsection{Why continuous Hamiltonian flow is wrong}
 
 The transport operators $T_{k,k+1}$ were introduced in
-Section~\ref{sec:Cctx} as analogues of Floer continuation maps.
+Section~\ref{sec:category} as analogues of Floer continuation maps.
 This framing is geometrically correct at the level of the
 symplectic manifold $T^*\mathbb{R}^d$ but operationally wrong
 at the level of the token stream.
@@ -1499,7 +1499,7 @@ $\lfloor d/k_p \rfloor$ independent subsystems of size $k_p$.
 Each subsystem evolves independently --- the full-context $\mathrm{GL}(d)$
 representation has collapsed to a direct product of
 $\mathrm{GL}(d/k_p)$ subsystems.
-The effective context fraction $1/k_p$ (Definition in Section~\ref{sec:frobenius})
+The effective context fraction $1/k_p$ (Definition in Section~\ref{sec:galois})
 is the fraction of the Toda system that is still coupled to the full lattice.
 \end{proposition}
 
@@ -2135,7 +2135,20 @@ The emergence of ``meaning'' in an LLM is a transition from
 non-integrable to integrable discrete dynamics --- a computable,
 algebraically precise signature.
 
-\textbf{Status.} Pending checkpoint access and network connection to HuggingFace.
+\textbf{Status — partially confirmed without checkpoints.}
+The checkpoint sweep (training step 0 vs trained) was not run
+as a sequential training experiment.
+However, the init test (§\ref{sec:arch-vs-learned}, Result~\ref{result:arch-learned})
+provides direct evidence for the phase transition:
+random init (step~0 analogue) gives Hessenberg violation $0.348$
+and the layer sweep (Result~\ref{result:sweep}) confirms the
+transition occurs at layer~9, where violation drops from $>0.1$ to $<0.1$
+with simultaneous entropy collapse ($2.49 \to 0.93$) and idempotency increase.
+The transition step $t^*$ within the layer progression is empirically
+identified at layer~9.
+The full checkpoint sweep (measuring the same transition across training
+time rather than network depth) remains future work requiring
+training checkpoint access.
 
 \subsection{Result: architectural bias + learned completion}
 \label{sec:arch-vs-learned}
@@ -2638,7 +2651,7 @@ Cotangent Lagrangian $\int_L\omega\approx 0$ &
   §\ref{sec:bv} \\
 Dehn gap $=\mathrm{rank}(\partial_2\Phi-\Phi\partial_1)$ &
   Closed 1-cochain in Hochschild complex; $d\circ d=0$ verified &
-  §\ref{sec:cotangent} \\
+  §\ref{sec:bv} \\
 Relation-sensitive nerve $H_1$: 12/12 correct &
   Cohen $d=2.09$; $\ker(\phi_*)$ captures type errors; Dehn gap captures reversals &
   §\ref{sec:rel-nerve} \\
@@ -2659,7 +2672,7 @@ $\mathcal{O}_2$ separates what $\|m_0\|$ cannot &
   §\ref{sec:stasheff} \\
 Quantum Steenrod cokernel Cohen $d=1.09$ &
   $(c_2+c_5+c_7)$ alone; $c_2$ dominant (range 0--4) &
-  §\ref{sec:steenrod} \\
+  §\ref{sec:bv} \\
 $k_5=2.00$ for binary collapse at all 7 depths &
   Orientation flip every 2 steps; exact $\mathrm{GL}(n/2)^2$ Levi prediction &
   §\ref{sec:supersingularity} \\
@@ -3370,6 +3383,12 @@ and establishes that the 62 exceptional divisors of $V(I)$ are the
   \emph{Cluster theory of topological Fukaya categories, Part II:
   Higher Teichm\"uller theory},
   arXiv:2510.05925 (2025).
+
+\bibitem{Vaswani17}
+  A.~Vaswani, N.~Shazeer, N.~Parmar, J.~Uszkoreit, L.~Jones, A.~N.~Gomez,
+  L.~Kaiser and I.~Polosukhin,
+  \emph{Attention is all you need},
+  Advances in Neural Information Processing Systems 30 (2017).
 
 \bibitem{Manning99}
   A.~Manning,
